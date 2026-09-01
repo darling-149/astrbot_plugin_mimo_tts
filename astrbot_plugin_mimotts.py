@@ -2698,69 +2698,73 @@ class CustomChatLLM(Star):
             })
 
     async def api_save_config(self):
-        payload = await request.json(default={})
-        if not isinstance(payload, dict):
-            return error_response("无效的配置数据")
-        editable_keys = [
-            "api_base_url", "api_key",
-            "chat_model",
-            "chat_model_enable",
-            "custom_model_enable",
-            "vision_model",
-            "vision_model_enable",
-            "persona", "hide_ai_identity", "use_astrbot_default_persona", "astrbot_persona",
-            "enable_long_memory", "memory_recall_count", "auto_save_memory",
-            "group_image_reply", "enable_emoji_analysis", "enable_facial_expression",
-            "gif_first_frame",
-            "ignore_mention_others",
-            "enable_proactive_chat", "proactive_chat_frequency",
-            "enable_noprefix_command",
-            "tts_enable", "tts_mode", "tts_api_base_url", "tts_api_key", "tts_model",
-            "tts_voice", "tts_speed", "tts_emotion", "tts_style", "tts_rhythm", "tts_paralanguage", "tts_max_length",
-            "max_log", "on_thinking", "session_expire_seconds",
-            "enable_favorability", "favorability_default",
-            "enable_private_companion", "master_user_ids", "avoid_intimate_non_master",
-        ]
-        for key in editable_keys:
-            if key in payload:
-                if key in ("api_key", "tts_api_key"):
-                    new_key = str(payload[key]).strip()
-                    # 掩码占位（含 * 或 •）视为未改动，保留已保存的 Key
-                    if new_key and "*" not in new_key and "•" not in new_key:
-                        self.config[key] = new_key
-                    elif not new_key:
-                        self.config[key] = ""
-                else:
-                    self.config[key] = payload[key]
-        # 保存新字段时同步清空旧版分列字段，避免用户清空后仍被旧值回退占用
-        if "api_base_url" in payload or "api_key" in payload:
-            for legacy in ("chat_api_base_url", "chat_api_key", "vision_api_base_url", "vision_api_key"):
-                self.config[legacy] = ""
         try:
-            self.config.save_config()
+            payload = await request.json(default={})
+            if not isinstance(payload, dict):
+                return error_response("无效的配置数据")
+            editable_keys = [
+                "api_base_url", "api_key",
+                "chat_model",
+                "chat_model_enable",
+                "custom_model_enable",
+                "vision_model",
+                "vision_model_enable",
+                "persona", "hide_ai_identity", "use_astrbot_default_persona", "astrbot_persona",
+                "enable_long_memory", "memory_recall_count", "auto_save_memory",
+                "group_image_reply", "enable_emoji_analysis", "enable_facial_expression",
+                "gif_first_frame",
+                "ignore_mention_others",
+                "enable_proactive_chat", "proactive_chat_frequency",
+                "enable_noprefix_command",
+                "tts_enable", "tts_mode", "tts_api_base_url", "tts_api_key", "tts_model",
+                "tts_voice", "tts_speed", "tts_emotion", "tts_style", "tts_rhythm", "tts_paralanguage", "tts_max_length",
+                "max_log", "on_thinking", "session_expire_seconds",
+                "enable_favorability", "favorability_default",
+                "enable_private_companion", "master_user_ids", "avoid_intimate_non_master",
+            ]
+            for key in editable_keys:
+                if key in payload:
+                    if key in ("api_key", "tts_api_key"):
+                        new_key = str(payload[key]).strip()
+                        # 掩码占位（含 * 或 •）视为未改动，保留已保存的 Key
+                        if new_key and "*" not in new_key and "•" not in new_key:
+                            self.config[key] = new_key
+                        elif not new_key:
+                            self.config[key] = ""
+                    else:
+                        self.config[key] = payload[key]
+            # 保存新字段时同步清空旧版分列字段，避免用户清空后仍被旧值回退占用
+            if "api_base_url" in payload or "api_key" in payload:
+                for legacy in ("chat_api_base_url", "chat_api_key", "vision_api_base_url", "vision_api_key"):
+                    self.config[legacy] = ""
+            try:
+                self.config.save_config()
+            except Exception as e:
+                logger.error(f"保存配置失败: {e}")
+                return error_response(f"保存失败: {e}")
+            # 保存成功后立即返回最新配置，确保界面同步
+            config = dict(self.config)
+            has_api_key = bool(
+                str(config.get("api_key") or "") or str(config.get("chat_api_key") or "")
+            )
+            has_tts_api_key = bool(str(config.get("tts_api_key") or ""))
+            # 返回的配置同样脱敏，避免真实 Key 回显到界面
+            for key in ("api_key", "chat_api_key", "vision_api_key", "chat_api_base_url",
+                        "vision_api_base_url", "custom_api_base_url", "custom_api_key",
+                        "tts_api_key"):
+                if key in config:
+                    config[key] = ""
+            config["api_key_set"] = has_api_key
+            config["tts_api_key_set"] = has_tts_api_key
+            await self._ensure_personas()
+            config["personas"] = self.personas
+            config["tts_voices"] = TTS_VOICES
+            config["providers"] = self._list_providers()
+            config["astrbot_personas"] = self._list_astrbot_personas()
+            return json_response(config)
         except Exception as e:
             logger.error(f"保存配置失败: {e}")
-            return error_response(f"保存失败: {e}")
-        # 保存成功后立即返回最新配置，确保界面同步
-        config = dict(self.config)
-        has_api_key = bool(
-            str(config.get("api_key") or "") or str(config.get("chat_api_key") or "")
-        )
-        has_tts_api_key = bool(str(config.get("tts_api_key") or ""))
-        # 返回的配置同样脱敏，避免真实 Key 回显到界面
-        for key in ("api_key", "chat_api_key", "vision_api_key", "chat_api_base_url",
-                    "vision_api_base_url", "custom_api_base_url", "custom_api_key",
-                    "tts_api_key"):
-            if key in config:
-                config[key] = ""
-        config["api_key_set"] = has_api_key
-        config["tts_api_key_set"] = has_tts_api_key
-        await self._ensure_personas()
-        config["personas"] = self.personas
-        config["tts_voices"] = TTS_VOICES
-        config["providers"] = self._list_providers()
-        config["astrbot_personas"] = self._list_astrbot_personas()
-        return json_response(config)
+            return error_response(f"保存配置失败: {e}")
 
     # ---- 人格库 API ----
 

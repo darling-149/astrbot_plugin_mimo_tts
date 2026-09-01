@@ -246,7 +246,7 @@ MiMo TTS 支持丰富的情绪、节奏和副语言控制，让语音表达更�
 ## 📁 目录结构
 
 ```
-  astrbot_plugin_mimo_tts/
+  astrbot_plugin_mimotts/
 ├─ main.py            # 插件主逻辑
 ├─ metadata.yaml      # 插件元数据（显示名：Edge_TTS）
 ├─ _conf_schema.json  # 配置定义（全部 invisible，管理面板不显示）
@@ -260,4 +260,4 @@ MiMo TTS 支持丰富的情绪、节奏和副语言控制，让语音表达更�
    └─ <插件>_config.json   # 插件配置（持久化到 AstrBot 配置目录 data/config/）
 ```
 
-> 插件配置统一持久化到 AstrBot 的 `data/config/astrbot_plugin_mimo_tts_config.json`（或经典配置路径），由控制界面读写；人格库保存在插件 KV 存储中。
+> 插件配置统一持久化到 AstrBot 的 `data/config/astrbot_plugin_mimotts_config.json`（或经典配置路径），由控制界面读写；人格库保存在插件 KV 存储中。

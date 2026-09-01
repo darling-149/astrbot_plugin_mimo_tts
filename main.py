@@ -2365,16 +2365,24 @@ class CustomChatLLM(Star):
             return
         logger.debug(f"[MiMo_TTS] 模型回复内容: {content[:50]}...")
 
+        # 过滤括号内文字用于语音（保留原文字用于发送）
+        tts_content = content
+        if content:
+            tts_content = re.sub(r'[（(][^）)]*(情感|微表情|动作|神情)[^）)]*[）)]', '', content)
+            tts_content = re.sub(r'\s+', ' ', tts_content).strip()
+            logger.debug(f"[MiMo_TTS] TTS内容过滤括号 - 原始: {content[:50]}..., 过滤后: {tts_content[:50]}...")
+
         # 回复（文字 + 语音）
         # 统一按"播报最大字符数"限制回复长度，文字输出与语音播报同步截断
         max_len = int(self.config.get("tts_max_length", 300))
         if len(content) > max_len:
             content = content[:max_len]
+            tts_content = tts_content[:max_len]
             logger.debug(f"回复内容超过最大字符数限制({max_len})，已同步截断文字与语音输出")
         mode = self.config.get("tts_mode", "text_voice")
         chain = []
-        logger.debug(f"语音模式: {mode}, 内容长度: {len(content)}, 内容预览: {content[:50]}")
-        
+        logger.debug(f"语音模式: {mode}, 内容长度: {len(content)}, TTS内容: {tts_content[:50] if tts_content else 'None'}...")
+
         if mode == "text":
             # 纯文字模式
             chain.append(Plain(content))
@@ -2383,7 +2391,7 @@ class CustomChatLLM(Star):
             # 纯语音模式
             try:
                 is_only_at = (not text or text == "") and not has_image
-                audio_path = await self.text_to_voice(content, has_image, is_only_at)
+                audio_path = await self.text_to_voice(tts_content, has_image, is_only_at)
                 logger.debug(f"纯语音模式，语音生成结果: {audio_path}")
                 if audio_path and os.path.exists(audio_path):
                     abs_audio_path = os.path.abspath(audio_path)
@@ -2400,7 +2408,7 @@ class CustomChatLLM(Star):
             logger.debug("混合模式，添加文字组件")
             try:
                 is_only_at = (not text or text == "") and not has_image
-                audio_path = await self.text_to_voice(content, has_image, is_only_at)
+                audio_path = await self.text_to_voice(tts_content, has_image, is_only_at)
                 logger.debug(f"混合模式，语音生成结果: {audio_path}")
                 if audio_path and os.path.exists(audio_path):
                     abs_audio_path = os.path.abspath(audio_path)

@@ -1,0 +1,389 @@
+{
+  "api_base_url": {
+    "description": "模型 API 接口地址（OpenAI 兼容格式）",
+    "type": "string",
+    "default": "",
+    "obvious_hint": true,
+    "hint": "对话与识图共用同一 API 地址；可填通用端点（如 …/v4，自动补全 /chat/completions）或完整端点；留空采用 AstrBot 配置",
+    "invisible": true
+  },
+  "api_key": {
+    "description": "模型 API Key",
+    "type": "string",
+    "default": "",
+    "obvious_hint": true,
+    "hint": "对话与识图共用同一 API Key",
+    "invisible": true
+  },
+  "chat_api_base_url": {
+    "description": "对话模型 API 接口地址（旧版字段，已废弃）",
+    "type": "string",
+    "default": "",
+    "obvious_hint": true,
+    "hint": "已废弃，请改用 api_base_url；仅用于兼容旧配置回退",
+    "invisible": true
+  },
+  "chat_api_key": {
+    "description": "对话模型 API Key（旧版字段，已废弃）",
+    "type": "string",
+    "default": "",
+    "obvious_hint": true,
+    "hint": "已废弃，请改用 api_key；仅用于兼容旧配置回退",
+    "invisible": true
+  },
+  "chat_provider_id": {
+    "description": "对话模型 AstrBot 提供商 ID",
+    "type": "string",
+    "default": "",
+    "_special": "select_provider",
+    "hint": "选择 AstrBot 已配置的模型提供商，无需再填 API 地址",
+    "invisible": true
+  },
+  "chat_model_enable": {
+    "description": "启用对话模型",
+    "type": "bool",
+    "default": true,
+    "hint": "关闭后不使用对话模型（不进行 AI 回复）",
+    "invisible": true
+  },
+  "custom_model_enable": {
+    "description": "开启自定义模型",
+    "type": "bool",
+    "default": false,
+    "hint": "默认关闭；开启后使用自定义 API 地址与模型名称；开启但未填写 API 地址与 Key 时视为未配置，当前生效模型不显示也不调用 AstrBot 系统模型",
+    "invisible": true
+  },
+  "chat_model": {
+    "description": "对话模型名称（可自定义，留空使用 AstrBot 提供商默认模型）",
+    "type": "string",
+    "default": "",
+    "hint": "自定义 API 模式指定模型名；AstrBot 提供商模式可覆盖其默认模型，留空使用默认",
+    "invisible": true
+  },
+  "vision_api_base_url": {
+    "description": "识图模型 API 接口地址（旧版字段，已废弃）",
+    "type": "string",
+    "default": "",
+    "obvious_hint": true,
+    "hint": "已废弃，对话与识图共用 api_base_url；仅用于兼容旧配置回退",
+    "invisible": true
+  },
+  "vision_api_key": {
+    "description": "识图模型 API Key（旧版字段，已废弃）",
+    "type": "string",
+    "default": "",
+    "obvious_hint": true,
+    "hint": "已废弃，对话与识图共用 api_key；仅用于兼容旧配置回退",
+    "invisible": true
+  },
+  "vision_provider_id": {
+    "description": "识图模型 AstrBot 提供商 ID",
+    "type": "string",
+    "default": "",
+    "_special": "select_provider",
+    "hint": "选择 AstrBot 已配置的模型提供商，无需再填 API 地址",
+    "invisible": true
+  },
+  "vision_model_enable": {
+    "description": "启用识图（视觉）模型",
+    "type": "bool",
+    "default": true,
+    "hint": "关闭后不使用识图模型，收到图片时不进行图片分析",
+    "invisible": true
+  },
+  "vision_model": {
+    "description": "识图模型名称（可自定义，留空使用 AstrBot 提供商默认模型）",
+    "type": "string",
+    "default": "",
+    "hint": "自定义识图 API 模式指定模型名；AstrBot 提供商模式可覆盖其默认模型，留空使用默认",
+    "invisible": true
+  },
+  "persona": {
+    "description": "当前人格（人格库 ID）",
+    "type": "string",
+    "default": "zhixin",
+    "hint": "在控制界面的「人格库」中管理人格，此处填写默认人格的 ID，如 zhixin",
+    "invisible": true
+  },
+  "use_astrbot_default_persona": {
+    "description": "启用默认 AstrBot 人格",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后关闭插件人格库，不注入任何人格设定，直接使用 AstrBot 侧人格",
+    "invisible": true
+  },
+  "astrbot_persona": {
+    "description": "选择的 AstrBot 人格名称",
+    "type": "string",
+    "default": "",
+    "hint": "跟随AstrBot配置文件当前人格，选择astrbot可用人格或者使用插件人格和添加你喜欢的人格",
+    "invisible": true
+  },
+  "hide_ai_identity": {
+    "description": "隐藏 AI 身份（拟人化）",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后 AI 不承认自己是 AI/机器人，语气更口语化、自然拟态；关闭则允许明确 AI 身份",
+    "invisible": true
+  },
+  "enable_long_memory": {
+    "description": "启用长期记忆",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后自动保存并回忆重要对话内容，以文件形式存储于插件 data/long_memory/ 目录",
+    "invisible": true
+  },
+  "memory_recall_count": {
+    "description": "每次回忆记忆条数",
+    "type": "int",
+    "default": 3,
+    "hint": "每轮对话最多回顾的长期记忆条数",
+    "invisible": true
+  },
+  "auto_save_memory": {
+    "description": "自动保存长期记忆",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后自动从对话中提炼记忆",
+    "invisible": true
+  },
+  "group_image_reply": {
+    "description": "群聊图片直答（无需@）",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后群里发送图片无需@机器人即可自动识别图片；关闭时群里需@机器人或在会话窗口内才会识别",
+    "invisible": true
+  },
+  "enable_emoji_analysis": {
+    "description": "消息 Emoji 表情识别",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后自动识别用户消息中的常见 Emoji 表情及其含义，让 AI 在回复语气中自然呼应",
+    "invisible": true
+  },
+  "enable_facial_expression": {
+    "description": "图片人脸表情识别",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后收到图片时，AI 会额外观察图片中人物的面部表情与情绪并给出贴合的回应",
+    "invisible": true
+  },
+  "ignore_mention_others": {
+    "description": "群聊用户@其他（她）人不给予回复",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后，群聊中用户@其他（她）人的消息 AI 将不给予回复",
+    "invisible": true
+  },
+  "enable_proactive_chat": {
+    "description": "不定时观察群聊（上下文感知插话）",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后机器人未被@时，也会偶尔根据群聊上下文主动插话回复",
+    "invisible": true
+  },
+  "proactive_chat_frequency": {
+    "description": "群聊插话频率",
+    "type": "int",
+    "default": 10,
+    "hint": "平均每 N 条符合条件的群消息插话 1 次，范围 2-100，数值越小插话越频繁",
+    "invisible": true
+  },
+  "enable_favorability": {
+    "description": "好感度面板",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后记录对每个私聊用户 / 群聊群的好感度，AI 根据好感度调整语气，并可在控制界面查看与修改",
+    "invisible": true
+  },
+  "favorability_default": {
+    "description": "起始好感度",
+    "type": "int",
+    "default": 50,
+    "hint": "新用户/新群的好感度初始值，范围 0-100，每次成功互动 +1",
+    "invisible": true
+  },
+  "enable_private_companion": {
+    "description": "私人陪护（设置主人）",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后在好感度面板设置主人，AI 对主人亲密贴心陪护，对非主人避免过度言语亲密",
+    "invisible": true
+  },
+  "master_user_ids": {
+    "description": "主人用户ID列表",
+    "type": "list",
+    "default": [],
+    "hint": "填入主人的用户 ID（如 QQ 号），多个用逗号分隔，仅在私聊时识别为主人",
+    "invisible": true
+  },
+  "avoid_intimate_non_master": {
+    "description": "非主人避免过度言语亲密",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后，对话者非主人时 AI 保持礼貌距离，避免使用过于亲密、暧昧或撒娇的言语",
+    "invisible": true
+  },
+  "tts_enable": {
+    "description": "启用文字转语音（MiMo TTS）",
+    "type": "bool",
+    "default": true,
+    "hint": "使用小米 MiMo TTS 接口将回复转为语音",
+    "invisible": true
+  },
+  "tts_mode": {
+    "description": "语音回复模式",
+    "type": "string",
+    "default": "text_voice",
+    "options": [
+      "text",
+      "voice",
+      "text_voice"
+    ],
+    "hint": "text 仅文字 | voice 仅语音 | text_voice 文字+语音",
+    "invisible": true
+  },
+  "tts_api_base_url": {
+    "description": "TTS API 接口地址",
+    "type": "string",
+    "default": "https://api.xiaomimimo.com/v1",
+    "hint": "MiMo TTS 的 OpenAI 兼容接口地址，默认使用小米官方地址，一般无需修改",
+    "invisible": true
+  },
+  "tts_api_key": {
+    "description": "TTS API Key",
+    "type": "string",
+    "default": "",
+    "hint": "小米 MiMo 开放平台申请的 API Key；留空时读取环境变量 MIMO_API_KEY",
+    "invisible": true
+  },
+  "tts_model": {
+    "description": "TTS 模型名称",
+    "type": "string",
+    "default": "mimo-v2.5-tts",
+    "hint": "MiMo TTS 模型，默认 mimo-v2.5-tts",
+    "invisible": true
+  },
+  "tts_voice": {
+    "description": "TTS 音色（完整中文描述在控制界面选择）",
+    "type": "string",
+    "default": "冰糖",
+    "hint": "MiMo TTS 预置音色，支持普通话/英语；完整列表及搜索请在控制界面「语音」模块中选择",
+    "invisible": true
+  },
+  "tts_speed": {
+    "description": "语音语速（0.5-2.0）",
+    "type": "float",
+    "default": 1.0,
+    "hint": "数字越大语速越快",
+    "invisible": true
+  },
+  "tts_emotion": {
+    "description": "TTS 情绪选择",
+    "type": "string",
+    "default": "",
+    "options": [
+      "",
+      "冷漠",
+      "平静",
+      "委屈",
+      "温柔",
+      "开心",
+      "悲伤",
+      "愤怒",
+      "严肃",
+      "期待",
+      "惊讶",
+      "恐惧",
+      "自豪",
+      "轻松",
+      "俏皮"
+    ],
+    "hint": "选择语音情绪，留空使用默认情绪",
+    "invisible": true
+  },
+  "tts_style": {
+    "description": "TTS 风格选择",
+    "type": "string",
+    "default": "",
+    "options": [
+      "",
+      "专业",
+      "亲切",
+      "活泼",
+      "沉稳",
+      "感性",
+      "理性",
+      "正式",
+      "随性"
+    ],
+    "hint": "选择语音风格，留空使用默认风格",
+    "invisible": true
+  },
+  "tts_rhythm": {
+    "description": "TTS 节奏控制",
+    "type": "string",
+    "default": "",
+    "options": [
+      "",
+      "语速稍慢",
+      "语速加快",
+      "音调抬高",
+      "音调压低",
+      "停顿频繁",
+      "流畅连贯"
+    ],
+    "hint": "选择语音节奏，留空使用默认节奏",
+    "invisible": true
+  },
+  "tts_paralanguage": {
+    "description": "TTS 副语言控制",
+    "type": "string",
+    "default": "",
+    "options": [
+      "",
+      "叹气",
+      "低声",
+      "气声"
+    ],
+    "hint": "选择副语言效果，留空使用默认效果",
+    "invisible": true
+  },
+
+
+  "tts_max_length": {
+    "description": "回复最大字符数",
+    "type": "int",
+    "default": 300,
+    "hint": "超过该长度的回复会被截断，文字输出与语音播报同步生效",
+    "invisible": true
+  },
+  "max_log": {
+    "description": "上下文最大轮数",
+    "type": "int",
+    "default": 14,
+    "hint": "对话历史保留的最大消息条数",
+    "invisible": true
+  },
+  "on_thinking": {
+    "description": "开启深度思考",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后向模型发送深度思考指令（需模型支持深度思考，部分模型不支持）",
+    "invisible": true
+  },
+  "enable_noprefix_command": {
+    "description": "群聊引用唤醒词",
+    "type": "bool",
+    "default": true,
+    "hint": "跟随AstrBot唤醒词",
+    "invisible": true
+  },
+  "session_expire_seconds": {
+    "description": "群聊唤醒会话时长（秒）",
+    "type": "int",
+    "default": 120,
+    "hint": "群聊中@机器人唤醒后，该时间范围内无需重复@即可继续对话，默认 120 秒（2分钟）",
+    "invisible": true
+  }
+}

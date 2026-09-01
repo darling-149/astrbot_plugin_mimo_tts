@@ -2565,31 +2565,35 @@ class CustomChatLLM(Star):
         )
 
     async def api_get_config(self):
-        config = dict(self.config)
-        await self._ensure_personas()
-        config["personas"] = self.personas
-        config["tts_voices"] = TTS_VOICES
-        config["providers"] = self._list_providers()
-        config["astrbot_personas"] = self._list_astrbot_personas()
-        sel_persona = await self._get_astrbot_persona()
-        config["astrbot_current_persona"] = sel_persona.get("name") or ""
-        
-        # 标识自定义 API Key 是否已配置，供控制界面以掩码占位显示（不泄露真实 Key）
-        has_api_key = bool(
-            str(config.get("api_key") or "") or str(config.get("chat_api_key") or "")
-        )
-        has_tts_api_key = bool(str(config.get("tts_api_key") or ""))
-        # 移除敏感信息，防止 API key 泄露
-        sensitive_keys = ["api_key", "chat_api_key", "vision_api_key", "chat_api_base_url", 
-                          "vision_api_base_url", "custom_api_base_url", "custom_api_key",
-                          "tts_api_key"]
-        for key in sensitive_keys:
-            if key in config:
-                config[key] = ""
-        config["api_key_set"] = has_api_key
-        config["tts_api_key_set"] = has_tts_api_key
-        
-        return json_response(config)
+        try:
+            config = dict(self.config)
+            await self._ensure_personas()
+            config["personas"] = self.personas
+            config["tts_voices"] = TTS_VOICES
+            config["providers"] = self._list_providers()
+            config["astrbot_personas"] = self._list_astrbot_personas()
+            sel_persona = await self._get_astrbot_persona()
+            config["astrbot_current_persona"] = sel_persona.get("name") or ""
+            
+            # 标识自定义 API Key 是否已配置，供控制界面以掩码占位显示（不泄露真实 Key）
+            has_api_key = bool(
+                str(config.get("api_key") or "") or str(config.get("chat_api_key") or "")
+            )
+            has_tts_api_key = bool(str(config.get("tts_api_key") or ""))
+            # 移除敏感信息，防止 API key 泄露
+            sensitive_keys = ["api_key", "chat_api_key", "vision_api_key", "chat_api_base_url", 
+                              "vision_api_base_url", "custom_api_base_url", "custom_api_key",
+                              "tts_api_key"]
+            for key in sensitive_keys:
+                if key in config:
+                    config[key] = ""
+            config["api_key_set"] = has_api_key
+            config["tts_api_key_set"] = has_tts_api_key
+            
+            return json_response(config)
+        except Exception as e:
+            logger.error(f"加载配置失败: {e}")
+            return error_response(f"加载配置失败: {e}")
 
     def _list_providers(self) -> list[dict]:
         """返回 AstrBot 已配置的聊天模型提供商列表。"""

@@ -2566,7 +2566,9 @@ class CustomChatLLM(Star):
 
     async def api_get_config(self):
         try:
+            logger.info("开始加载配置...")
             config = dict(self.config)
+            logger.info(f"配置加载成功，共{len(config)}个键")
             await self._ensure_personas()
             config["personas"] = self.personas
             config["tts_voices"] = TTS_VOICES
@@ -2590,9 +2592,10 @@ class CustomChatLLM(Star):
             config["api_key_set"] = has_api_key
             config["tts_api_key_set"] = has_tts_api_key
             
+            logger.info("配置加载完成，返回响应")
             return json_response(config)
         except Exception as e:
-            logger.error(f"加载配置失败: {e}")
+            logger.error(f"加载配置失败: {e}", exc_info=True)
             return error_response(f"加载配置失败: {e}")
 
     def _list_providers(self) -> list[dict]:

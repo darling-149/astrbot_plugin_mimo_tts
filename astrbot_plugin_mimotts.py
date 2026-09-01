@@ -335,6 +335,7 @@ class CustomChatLLM(Star):
     def __init__(self, context: Context, config: AstrBotConfig) -> None:
         super().__init__(context)
         self.config = config
+        logger.info(f"[MiMo TTS] 插件初始化开始，PLUGIN_NAME={PLUGIN_NAME}")
         # 人格库缓存（首次使用时从 KV 加载）
         self.personas: list[dict] = []
         # 群聊会话激活表: key = (platform_id, group_id, user_id) -> 过期时间戳
@@ -348,6 +349,7 @@ class CustomChatLLM(Star):
             )
 
         # 注册控制界面后端 Web API
+        logger.info(f"[MiMo TTS] 开始注册 {23} 个Web API端点")
         context.register_web_api(
             f"/{PLUGIN_NAME}/status", self.api_status, ["GET"], "获取运行状态"
         )
@@ -360,6 +362,7 @@ class CustomChatLLM(Star):
             ["POST"],
             "保存配置",
         )
+        logger.info(f"[MiMo TTS] Web API端点注册完成")
         context.register_web_api(
             f"/{PLUGIN_NAME}/personas", self.api_get_personas, ["GET"], "获取人格列表"
         )

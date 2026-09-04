@@ -317,8 +317,6 @@ DEFAULT_CONFIG = {
     "tts_emotion": "",
     "tts_style": "",
     "tts_rhythm": "",
-    "tts_paralanguage": "",
-    "tts_max_length": 300,
     "max_log": 14,
     "on_thinking": True,
     "session_expire_seconds": 120,
@@ -757,6 +755,8 @@ class CustomChatLLM(Star):
             
         clean = text.replace("\n", " ").replace("#", "").replace("*", "").replace("`", "")
         clean = " ".join(clean.split())
+        # 移除 Emoji 字符（仅用于语音播报，不影响文字显示）
+        clean = re.sub(r'[\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0000FE00-\U0000FE0F\U0000200D]+', '', clean)
         
         # 特殊处理：如果文本为空但有图片，使用默认描述
         if not clean and has_image:
@@ -771,12 +771,7 @@ class CustomChatLLM(Star):
         if not clean:
             logger.debug("清理后的文本为空")
             return None
-            
-        max_len = int(self.config.get("tts_max_length", 300))
-        if len(clean) > max_len:
-            clean = clean[:max_len]
-            logger.debug(f"文本长度超过最大限制，已截断为: {clean[:50]}...")
-            
+
         voice = self.config.get("tts_voice", "冰糖")
         logger.debug(f"使用语音: {voice}")
         
@@ -2371,17 +2366,9 @@ class CustomChatLLM(Star):
         # 过滤括号内文字用于语音（保留原文字用于发送）
         tts_content = content
         if content:
-            tts_content = re.sub(r'[（(][^）)]*(情感|微表情|动作|神情)[^）)]*[）)]', '', content)
             tts_content = re.sub(r'\s+', ' ', tts_content).strip()
-            logger.debug(f"[MiMo_TTS] TTS内容过滤括号 - 原始: {content[:50]}..., 过滤后: {tts_content[:50]}...")
 
         # 回复（文字 + 语音）
-        # 统一按"播报最大字符数"限制回复长度，文字输出与语音播报同步截断
-        max_len = int(self.config.get("tts_max_length", 300))
-        if len(content) > max_len:
-            content = content[:max_len]
-            tts_content = tts_content[:max_len]
-            logger.debug(f"回复内容超过最大字符数限制({max_len})，已同步截断文字与语音输出")
         mode = self.config.get("tts_mode", "text_voice")
         chain = []
         logger.debug(f"语音模式: {mode}, 内容长度: {len(content)}, TTS内容: {tts_content[:50] if tts_content else 'None'}...")
@@ -2723,7 +2710,7 @@ class CustomChatLLM(Star):
                 "enable_proactive_chat", "proactive_chat_frequency",
                 "enable_noprefix_command",
                 "tts_enable", "tts_mode", "tts_api_base_url", "tts_api_key", "tts_model",
-                "tts_voice", "tts_speed", "tts_emotion", "tts_style", "tts_rhythm", "tts_paralanguage", "tts_max_length",
+                "tts_voice", "tts_speed", "tts_emotion", "tts_style", "tts_rhythm", "tts_paralanguage",
                 "max_log", "on_thinking", "session_expire_seconds",
                 "enable_favorability", "favorability_default",
                 "enable_private_companion", "master_user_ids", "avoid_intimate_non_master",

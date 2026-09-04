@@ -731,31 +731,25 @@
                 </select>
                 <span class="hint">选择语音节奏，留空使用默认节奏</span>
               </div>
-             <div class="field">
-               <label>副语言</label>
-               <select id="tts_paralanguage">
-                 <option value="">默认效果</option>
-                 <option value="叹气">叹气</option>
-                 <option value="低声">低声</option>
-                 <option value="气声">气声</option>
-               </select>
-               <span class="hint">选择副语言效果，留空使用默认效果</span>
-             </div>
-
-             <div class="field">
-              <label>回复最大字符数（文字与语音同步）</label>
-              <input id="tts_max_length" type="number" min="50" max="1000" />
-            </div>
+              <div class="field">
+                <label>副语言</label>
+                <select id="tts_paralanguage">
+                  <option value="">默认效果</option>
+                  <option value="叹气">叹气</option>
+                  <option value="低声">低声</option>
+                  <option value="气声">气声</option>
+                </select>
+                <span class="hint">选择副语言效果，留空使用默认效果</span>
+              </div>
+          </div>
+          <div class="actions" style="margin-top: 16px">
+            <button class="btn" id="btnSaveVoice">保存语音配置</button>
+          </div>
         </div>
-        <div class="actions" style="margin-top: 16px">
-          <button class="btn" id="btnSaveVoice">保存语音配置</button>
-        </div>
-      </div>
 
 
-
-      <div class="card view" data-view="memory">
-        <h2>会话设置</h2>
+        <div class="card view" data-view="memory">
+          <h2>会话设置</h2>
         <div class="switch-row">
           <div class="info">
             群聊图片直答（无需@）

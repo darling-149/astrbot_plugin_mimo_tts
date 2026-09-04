@@ -314,7 +314,6 @@ function collectConfig() {
     tts_rhythm: $("tts_rhythm").value,
     tts_paralanguage: $("tts_paralanguage").value,
 
-    tts_max_length: parseInt($("tts_max_length").value, 10) || 300,
     memory_recall_count: parseInt($("memory_recall_count").value, 10) || 3,
     session_expire_seconds: parseInt($("session_expire_seconds").value, 10) || 120,
     max_log: parseInt($("max_log").value, 10) || 14,
@@ -420,8 +419,7 @@ function applyConfig(config) {
    $("tts_style").value = config.tts_style || "";
    $("tts_rhythm").value = config.tts_rhythm || "";
    $("tts_paralanguage").value = config.tts_paralanguage || "";
-   $("tts_max_length").value = config.tts_max_length || 300;
-  $("memory_recall_count").value = config.memory_recall_count || 3;
+   $("memory_recall_count").value = config.memory_recall_count || 3;
   $("session_expire_seconds").value = config.session_expire_seconds || 120;
   $("max_log").value = config.max_log || 14;
   $("on_thinking").value = config.on_thinking ? "true" : "false";
@@ -703,7 +701,6 @@ const VOICE_KEYS = [
   "tts_style",
   "tts_rhythm",
   "tts_paralanguage",
-  "tts_max_length",
 ];
 
 const MEMORY_KEYS = [
@@ -731,6 +728,20 @@ $("btnSaveIdentity").addEventListener("click", async () => {
 
 $("btnSaveMemory").addEventListener("click", async () => {
   await saveConfigKeys(MEMORY_KEYS, $("btnSaveMemory"));
+});
+
+const MODEL_KEYS = [
+  "chat_model_enable",
+  "custom_model_enable",
+  "vision_model_enable",
+  "api_base_url",
+  "api_key",
+  "chat_model",
+  "vision_model",
+];
+
+$("btnSaveModel").addEventListener("click", async () => {
+  await saveConfigKeys(MODEL_KEYS, $("btnSaveModel"));
 });
 
 const LONGMEM_KEYS = ["enable_long_memory", "auto_save_memory"];

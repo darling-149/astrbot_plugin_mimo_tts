@@ -2112,7 +2112,7 @@ class CustomChatLLM(Star):
             return
 
         # AstrBot "AI 对话总开关"关闭时，对话模型与识图模型都视为关闭，不进行任何回复；
-        # 开启“自定义模型”时使用自定义 API，不受 AstrBot 总开关限制
+        # 开启"自定义模型"时使用自定义 API，不受 AstrBot 总开关限制
         if not self._astrbot_ai_enable() and not self.config.get("custom_model_enable", False):
             return
 

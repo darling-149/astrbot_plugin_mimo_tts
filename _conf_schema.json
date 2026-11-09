@@ -349,6 +349,64 @@
     "hint": "选择副语言效果，留空使用默认效果",
     "invisible": true
   },
+  "tts_sing_enable": {
+    "description": "启用唱歌模式（MiMo TTS）",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后语音以唱歌形式合成，风格指令采用官方配套搭配（user 消息放风格指令，assistant 消息以 (唱歌) 开头接歌词）",
+    "invisible": true
+  },
+  "tts_sing_director": {
+    "description": "唱歌风格指令（自定义，官方配套 user 消息）",
+    "type": "string",
+    "default": "",
+    "hint": "预设选中「自定义」时启用；填写导演式描述，如「角色：清澈甜美的年轻女声。场景：深夜安静的录音棚。指导：主歌气声诉说，副歌共鸣打开」",
+    "invisible": true
+  },
+  "tts_sing_director_preset": {
+    "description": "唱歌风格指令预设",
+    "type": "string",
+    "default": "basic",
+    "options": [
+      "basic",
+      "advanced",
+      "shuqing",
+      "gufeng",
+      "yaogun",
+      "minyao",
+      "ertong",
+      "jiashi",
+      "shuoshuo",
+      "custom"
+    ],
+    "hint": "basic 基本版（官方简洁指令）；advanced 进阶版（官方角色+场景+指导）；shuqing 抒情；gufeng 古风；yaogun 摇滚；minyao 民谣；ertong 儿歌；jiashi 爵士；shuoshuo 说唱；custom 自定义（启用上方自定义指令文本框）",
+    "invisible": true
+  },
+  "tts_sing_inline_tags": {
+    "description": "唱歌内联音频标签",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后 AI 生成歌词时点缀 [吸气]、[笑] 等官方内联标签增强表现力",
+    "invisible": true
+  },
+  "tts_sing_format": {
+    "description": "唱歌音频输出格式",
+    "type": "string",
+    "default": "mp3",
+    "options": [
+      "mp3",
+      "wav"
+    ],
+    "hint": "唱歌模式音频输出格式，默认 mp3",
+    "invisible": true
+  },
+  "tts_sing_voice": {
+    "description": "唱歌独立音色",
+    "type": "string",
+    "default": "",
+    "hint": "唱歌模式专用音色，留空则使用普通语音音色（tts_voice）；与说话音色互不影响",
+    "invisible": true
+  },
 
 
 

@@ -89,6 +89,40 @@ except ImportError:
 
     request = _WebRequest()
 
+# ---- 插件持久化数据目录（AstrBot 标准：data/plugin_data/{plugin_name}/） ----
+# 通过 astrbot.core.utils.astrbot_path 获取；旧版本缺少该工具时逐级回退，
+# 保证数据始终落在 AstrBot 数据目录下的 plugin_data 子目录中，便于迁移与审计。
+
+
+def _plugin_data_dir() -> str:
+    """返回本插件的标准持久化数据目录并自动创建。
+
+    目录约定为 <AstrBot 根>/data/plugin_data/astrbot_plugin_mimotts/，
+    避免数据写入插件安装目录导致更新/重装时被覆盖。
+    """
+    base_dir: str | None = None
+    try:
+        from astrbot.core.utils.astrbot_path import (
+            get_astrbot_plugin_data_path as _get_plugin_data_path,
+        )
+
+        base_dir = _get_plugin_data_path()
+    except Exception:
+        pass
+    if base_dir is None:
+        try:
+            from astrbot.core.utils.astrbot_path import (
+                get_astrbot_data_path as _get_data_path,
+            )
+
+            base_dir = os.path.join(_get_data_path(), "plugin_data")
+        except Exception:
+            base_dir = os.path.join(os.getcwd(), "data", "plugin_data")
+    d = os.path.join(base_dir, PLUGIN_NAME)
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
 PLUGIN_NAME = "astrbot_plugin_mimotts"
 
 PERSONAS_KEY = f"{PLUGIN_NAME}:personas"
@@ -276,6 +310,80 @@ TTS_VOICES = [
     {"value": "Dean", "label": "Dean · 英文男声", "group": "", "lang": "en-US", "gender": "M", "desc": "英文男声，专业沉稳"},
 ]
 
+# MiMo TTS 唱歌风格指令预设（user 消息内容，官方配套搭配）
+# 官方搭配：messages = [user: 风格指令, assistant: "(唱歌)\n歌词正文"]
+# 每个预设值为「演唱风格指令」文本，直接作为 user 消息发送给 MiMo TTS。
+# key 为预设标识（小写英文），value 为指令文本；custom 为占位项，表示使用 tts_sing_director 自定义内容。
+MIMO_SING_DIRECTOR_PRESETS = {
+    # 官方示例
+    "basic": "用温柔、略带气声的方式演唱，副歌部分加强重音，尾音放慢并轻微拉长",
+    "advanced": (
+        "角色：清澈甜美的年轻女声。"
+        "场景：深夜安静的录音棚。"
+        "指导：主歌用气声轻轻诉说，副歌胸腔共鸣打开，情绪逐步推高，每句尾音自然收弱。"
+    ),
+    # 抒情慢歌
+    "shuqing": (
+        "角色：温暖醇厚、略带磁性的嗓音。"
+        "场景：黄昏的街角，路灯刚亮起。"
+        "指导：节奏偏慢，每个字都咬实，副歌尾音轻微拉长，整体情绪克制而深情，不刻意煽情。"
+    ),
+    # 古风
+    "gufeng": (
+        "角色：清冷雅致的古韵嗓音，字正腔圆。"
+        "场景：古曲伴奏，竹林庭院，月色清朗。"
+        "指导：行腔婉转，咬字归韵，气口留白，旋律在「字」与「腔」之间自然过渡，副歌处共鸣渐开。"
+    ),
+    # 摇滚
+    "yaogun": (
+        "角色：充满爆发力的摇滚嗓，略带沙哑。"
+        "场景：现场摇滚演唱会，鼓点密集。"
+        "指导：主歌紧凑有力，副歌嗓音撕开、咬字加重，节奏快而冲，结尾收得干净利落。"
+    ),
+    # 民谣
+    "minyao": (
+        "角色：朴素自然的嗓音，带一点颗粒感。"
+        "场景：木吉他弹唱，午后阳光。"
+        "指导：节奏舒缓，像说话一样娓娓道来，副歌稍抬音量，尾音自然轻收，不做作。"
+    ),
+    # 儿歌
+    "ertong": (
+        "角色：活泼俏皮的童声，干净透亮。"
+        "场景：儿童合唱团，欢快氛围。"
+        "指导：节奏明快，咬字清楚圆润，每个字带一点弹性，整体轻快跳跃，不压低嗓音。"
+    ),
+    # 爵士
+    "jiashi": (
+        "角色：慵懒松弛的爵士嗓音，气息绵长。"
+        "场景：深夜爵士酒吧，霓虹灯影。"
+        "指导：节奏 rub 化，重音位置微微错拍，尾音带一点 swing 的弹性，整体松弛不紧。"
+    ),
+    # 说唱
+    "shuoshuo": (
+        "角色：节奏感强的说唱嗓音，咬字干脆。"
+        "场景：嘻哈节拍，808 鼓组。"
+        "指导：节奏卡拍，咬字短促有力，韵脚重音，整体律动感强，不拖泥带水。"
+    ),
+    # 自定义占位（使用 tts_sing_director 的内容）
+    "custom": "",
+}
+
+# MiMo TTS 官方内联音频标签（可嵌入歌词任意位置，逐字控制情绪与语气）
+MIMO_SING_INLINE_TAGS = [
+    {"value": "叹气", "tag": "[叹气]"},
+    {"value": "笑", "tag": "[笑]"},
+    {"value": "哭", "tag": "[哭]"},
+    {"value": "吸气", "tag": "[吸气]"},
+    {"value": "停顿", "tag": "[停顿]"},
+]
+
+# 唱歌模式 AI 歌词生成时的内联标签点缀指引（官方进阶版搭配）
+MIMO_SING_INLINE_TAGS_PROMPT = (
+    "。歌词可在自然位置点缀内联音频标签以增强表现力"
+    "（如 [吸气] [笑] [哭] [叹气] [停顿]），"
+    "例如在换气处加 [吸气]、俏皮处加 [笑]；每首歌点缀 1-3 个即可，不要密集堆叠。"
+)
+
 # 默认空配置模板（实际配置由 _conf_schema.json 管理）
 DEFAULT_CONFIG = {
     "api_base_url": "",
@@ -317,6 +425,13 @@ DEFAULT_CONFIG = {
     "tts_emotion": "",
     "tts_style": "",
     "tts_rhythm": "",
+    "tts_paralanguage": "",
+    "tts_sing_enable": False,
+    "tts_sing_director": "",
+    "tts_sing_director_preset": "basic",
+    "tts_sing_inline_tags": True,
+    "tts_sing_format": "mp3",
+    "tts_sing_voice": "",
     "max_log": 14,
     "on_thinking": True,
     "session_expire_seconds": 120,
@@ -338,6 +453,8 @@ class CustomChatLLM(Star):
         self.personas: list[dict] = []
         # 群聊会话激活表: key = (platform_id, group_id, user_id) -> 过期时间戳
         self.active_sessions: dict[tuple, float] = {}
+        # 标记插件是否已启用，用于控制关闭流程
+        self._enabled = True
 
         # 环境检测（电脑版 / Docker 通用）：ffmpeg 缺失时 TTS 语音发送可能失败，提前告警
         if self.config.get("tts_enable", True) and not self._ffmpeg_installed():
@@ -568,7 +685,7 @@ class CustomChatLLM(Star):
     # ---- 记忆存储（文件管理） ----
 
     def _memory_dir(self) -> str:
-        d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", MEMORY_DIR_NAME)
+        d = os.path.join(_plugin_data_dir(), MEMORY_DIR_NAME)
         os.makedirs(d, exist_ok=True)
         return d
 
@@ -623,9 +740,7 @@ class CustomChatLLM(Star):
     # ---- 好感度存储（文件管理） ----
 
     def _favorability_file(self) -> str:
-        return os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "data", "favorability.json"
-        )
+        return os.path.join(_plugin_data_dir(), "favorability.json")
 
     async def _load_favorability(self) -> dict:
         """返回 {"user": {uid: 值}, "group": {gid: 值}}。"""
@@ -739,27 +854,46 @@ class CustomChatLLM(Star):
         """
         return shutil.which("ffmpeg") is not None
 
-    async def text_to_voice(self, text: str, has_image: bool = False, is_only_at: bool = False) -> str | None:
+    async def text_to_voice(
+        self,
+        text: str,
+        has_image: bool = False,
+        is_only_at: bool = False,
+        force_sing: bool = False,
+    ) -> str | None:
         """返回生成的音频文件路径，失败返回 None。
         
         Args:
             text: 要转换为语音的文本
             has_image: 是否包含图片（用于特殊处理）
             is_only_at: 是否仅为纯@机器人场景（无文字）
+            force_sing: 强制以唱歌模式合成（命令路径使用，避免依赖文本猜测）
         """
         logger.debug(f"开始生成语音，输入文本: {text[:50]}..., is_only_at: {is_only_at}")
         
+
         if not self.config.get("tts_enable", True):
             logger.debug("TTS 功能已禁用")
             return None
-            
-        clean = text.replace("\n", " ").replace("#", "").replace("*", "").replace("`", "")
-        clean = " ".join(clean.split())
+
+        # 判断是否为歌词内容：命令路径显式 force_sing，自然语言路径靠智能检测
+        sing_mode = force_sing or self._detect_sing_content(text)
+        if sing_mode:
+            audio_format = str(self.config.get("tts_sing_format", "mp3") or "mp3")
+        else:
+            audio_format = "wav"
+        if sing_mode:
+            # 唱歌模式：统一剥离时间标签/元信息/署名，只保留纯歌词行（保留换行以维持乐句节奏）
+            clean = self._clean_lyrics(text)
+        else:
+            clean = text.replace("\n", " ").replace("#", "").replace("*", "").replace("`", "")
+            clean = " ".join(clean.split())
         # 移除 Emoji 字符（仅用于语音播报，不影响文字显示）
-        clean = re.sub(r'[\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0000FE00-\U0000FE0F\U0000200D]+', '', clean)
-        
+        if not sing_mode:
+            clean = re.sub(r'[\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0000FE00-\U0000FE0F\U0000200D]+', '', clean)
+
         # 特殊处理：如果文本为空但有图片，使用默认描述
-        if not clean and has_image:
+        if not clean and has_image and not sing_mode:
             clean = "请描述这张图片的内容"
             logger.debug("文本为空但有图片，使用默认描述")
             
@@ -773,7 +907,12 @@ class CustomChatLLM(Star):
             return None
 
         voice = self.config.get("tts_voice", "冰糖")
-        logger.debug(f"使用语音: {voice}")
+        # 唱歌模式：使用独立唱歌音色（tts_sing_voice），留空则回退到普通语音音色
+        if sing_mode:
+            sing_voice = str(self.config.get("tts_sing_voice", "") or "").strip()
+            if sing_voice:
+                voice = sing_voice
+        logger.debug(f"使用语音: {voice}" + ("（唱歌独立音色）" if sing_mode and voice != self.config.get("tts_voice", "冰糖") else ""))
         
         # 检查音色是否有效
         valid_voices = [v["value"] for v in TTS_VOICES]
@@ -881,22 +1020,39 @@ class CustomChatLLM(Star):
             # 兼容 Windows/Linux：使用系统临时目录（W11 下为 %TEMP%）
             tts_dir = os.path.join(tempfile.gettempdir(), "custom_chat_llm_tts")
             os.makedirs(tts_dir, exist_ok=True)
-            out_path = os.path.join(tts_dir, f"tts_{uuid.uuid4().hex}.wav")
+            ext = audio_format if audio_format.lower() in ("mp3", "wav", "pcm16") else "wav"
+            out_path = os.path.join(tts_dir, f"tts_{uuid.uuid4().hex}.{ext}")
             logger.debug(f"语音文件将保存到: {out_path}")
 
             client = AsyncOpenAI(api_key=api_key, base_url=base_url)
             logger.debug(f"调用 MiMo TTS API，音色：{voice}，模型：{model}")
 
-            # 尝试使用 OpenAI 兼容的 chat completions 端点
+            # MiMo TTS 官方搭配：messages = [user: 风格指令, assistant: 合成文本]
+            # 唱歌模式：user 传官方导演式风格指令，assistant 以 (唱歌) 开头 + 歌词正文
+            # （官方示例见 MIMO_SING_DIRECTOR_PRESETS），内联音频标签可嵌入歌词任意位置
             try:
-                completion = await client.chat.completions.create(
-                    model=model,
-                    messages=[
-                        {"role": "user", "content": style_instruction},
-                        {"role": "assistant", "content": clean},
-                    ],
-                    audio={"format": "wav", "voice": voice},
-                )
+                if sing_mode:
+                    sing_instruction = self._build_sing_instruction()
+                    # 官方搭配：assistant 消息以 (唱歌) 开头，换行后接歌词正文
+                    sing_content = "(唱歌)" + chr(10) + clean
+                    logger.debug(f"唱歌模式，官方风格指令: {sing_instruction}")
+                    completion = await client.chat.completions.create(
+                        model=model,
+                        messages=[
+                            {"role": "user", "content": sing_instruction},
+                            {"role": "assistant", "content": sing_content},
+                        ],
+                        audio={"format": audio_format, "voice": voice},
+                    )
+                else:
+                    completion = await client.chat.completions.create(
+                        model=model,
+                        messages=[
+                            {"role": "user", "content": style_instruction},
+                            {"role": "assistant", "content": clean},
+                        ],
+                        audio={"format": audio_format, "voice": voice},
+                    )
                 audio_data = getattr(completion.choices[0].message.audio, "data", None)
                 if not audio_data:
                     logger.error("MiMo TTS 返回结果中缺少 audio.data")
@@ -913,38 +1069,338 @@ class CustomChatLLM(Star):
                     logger.error(f"语音文件生成失败，文件不存在：{out_path}")
                     return None
             except Exception as e:
-                logger.warning(f"OpenAI 兼容 TTS 调用失败：{e}，尝试直接使用 HTTP 请求")
-                # 降级到直接 HTTP 请求到 /audio/speech 端点
-                async with httpx.AsyncClient() as http_client:
-                    response = await http_client.post(
-                        f"{base_url.rstrip('/')}/audio/speech",
-                        headers={"Authorization": f"Bearer {api_key}"},
-                        json={
-                            "model": model,
-                            "input": clean,
-                            "voice": voice,
-                            "response_format": "wav",
-                        },
-                        timeout=30.0,
-                    )
-                    if response.status_code == 200:
-                        with open(out_path, "wb") as f:
-                            f.write(response.content)
-                        if os.path.exists(out_path):
-                            logger.debug(f"语音文件生成成功（HTTP 直调）：{out_path}")
-                            return out_path
-                        else:
-                            logger.error(f"语音文件生成失败，文件不存在：{out_path}")
-                            return None
-                    else:
-                        error_msg = response.text
-                        logger.error(f"TTS HTTP 请求失败，状态码：{response.status_code}，响应：{error_msg}")
-                        return None
+                # MiMo TTS 仅支持 OpenAI 兼容的 chat/completions 端点，
+                # 不存在独立的 /audio/speech 端点，失败即无可用降级路径
+                logger.error(f"MiMo TTS 生成失败（音色：{voice}）：{e}")
+                import traceback
+                logger.debug(traceback.format_exc())
+                return None
         except Exception as e:
-            logger.error(f"MiMo TTS 生成失败（音色：{voice}）：{e}")
+            logger.error(f"MiMo TTS 生成流程异常（音色：{voice}）：{e}")
             import traceback
             logger.debug(traceback.format_exc())
             return None
+
+    async def _search_lyrics(self, song_name: str) -> str:
+        """搜索歌词 - 多级降级获取歌词，任一级命中且通过校验即返回。
+
+        优先级：
+        1. 网易云音乐官方 API（较稳定，带 UA/Referer 头）
+        2. 第三方歌词 API（oioweb → oick → lolimi，不稳定，逐个尝试）
+        3. 网页兜底（百度歌词页正则提取，最后手段）
+        """
+        import urllib.parse
+
+        encoded_name = urllib.parse.quote(song_name)
+
+        # ===== 第 1 级：网易云官方 API =====
+        async with httpx.AsyncClient(timeout=10) as client:
+            # 1a. 网易云搜索（带 UA + Referer，降低风控概率）
+            search_url = f"https://music.163.com/api/search/get/web?s={encoded_name}&limit=1&type=1"
+            ncm_headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Referer": "https://music.163.com/",
+            }
+            try:
+                resp = await client.get(search_url, headers=ncm_headers)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data.get("result") and data["result"].get("songs"):
+                        song = data["result"]["songs"][0]
+                        song_id = song.get("id")
+                        title = song.get("name", "")
+                        if song_id:
+                            lyric_url = f"https://music.163.com/api/song/lyric?id={song_id}&lv=1"
+                            lyric_resp = await client.get(lyric_url, headers=ncm_headers)
+                            if lyric_resp.status_code == 200:
+                                lrc = lyric_resp.json().get("lrc", {}).get("lyric", "")
+                                if lrc and len(lrc.strip()) > 20:
+                                    clean_lyrics = self._strip_lrc_tags(lrc).strip()
+                                    if self._validate_lyrics(clean_lyrics):
+                                        logger.info(f"[MiMo_TTS] 从网易云获取歌词成功: {title}")
+                                        return clean_lyrics
+            except Exception as e:
+                logger.debug(f"[MiMo_TTS] 网易云搜索失败: {e}")
+
+        # ===== 第 2 级：第三方歌词 API（逐个尝试，单个失败不影响其他）=====
+        third_party_apis = [
+            ("oioweb", f"https://api.oioweb.cn/api/v1/music?keyword={encoded_name}"),
+            ("oick", f"https://api.oick.cn/lyric/api.php?name={encoded_name}"),
+            ("lolimi", f"https://api.lolimi.cn/API/歌词搜索/?msg={encoded_name}&type=json"),
+        ]
+        for api_name, api_url in third_party_apis:
+            try:
+                async with httpx.AsyncClient(timeout=10) as client:
+                    resp = await client.get(api_url)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        lyrics = data.get("lyric") or data.get("Lyrics") or data.get("data", {}).get("lyric", "")
+                        if lyrics and len(lyrics.strip()) > 10:
+                            clean = lyrics.strip()
+                            if self._validate_lyrics(clean):
+                                logger.info(f"[MiMo_TTS] 从 {api_name} 获取歌词成功")
+                                return clean
+            except Exception as e:
+                logger.debug(f"[MiMo_TTS] {api_name} 歌词 API 失败: {e}")
+                continue
+
+        # ===== 第 3 级：网页兜底（百度歌词页）=====
+        try:
+            async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+                baidu_url = f"https://www.baidu.com/s?wd={encoded_name}%20歌词"
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+                }
+                resp = await client.get(baidu_url, headers=headers)
+                if resp.status_code == 200:
+                    text = resp.text
+                    # 提取歌词相关段落（宽松匹配，抓到的内容再交给 _clean_lyrics 统一清理）
+                    lyric_patterns = [
+                        r'歌词[^<]*<[^>]*>([^<]+)',
+                        r'歌词内容</[^>]*>\s*([^<]+)',
+                    ]
+                    for pattern in lyric_patterns:
+                        match = re.search(pattern, text)
+                        if match:
+                            lyrics = match.group(1).strip()
+                            if len(lyrics) > 20 and self._validate_lyrics(lyrics):
+                                logger.info("[MiMo_TTS] 从百度歌词页获取歌词成功")
+                                return lyrics
+        except Exception as e:
+            logger.debug(f"[MiMo_TTS] 百度歌词页获取失败: {e}")
+
+        logger.warning(f"[MiMo_TTS] 所有歌词搜索方法均失败: {song_name}")
+        return ""
+
+    def _validate_lyrics(self, lyrics: str) -> bool:
+        """验证歌词内容的有效性"""
+        if not lyrics or len(lyrics.strip()) < 20:
+            return False
+
+        # 检查是否包含足够的内容
+        lines = [line.strip() for line in lyrics.split('\n') if line.strip()]
+        if len(lines) < 2:
+            return False
+
+        # 至少要有两行不同内容，避免“同一行错误信息重复”被当作歌词。
+        # 注意：正常歌曲副歌会重复，不能按重复比例一刀切（如 3 句副歌循环）。
+        unique_lines = set(lines)
+        if len(unique_lines) < 2:
+            return False
+
+        # 检查是否包含明显的错误标记
+        error_indicators = ['error', '错误', '无效', 'failed', '404', 'not found']
+        if any(indicator in lyrics.lower() for indicator in error_indicators):
+            return False
+
+        return True
+
+    @staticmethod
+    def _strip_lrc_tags(text: str) -> str:
+        """删除 LRC 时间标签与元信息标签，只保留歌词文字。
+
+        处理两类内容：
+        - 行内时间标签：[mm:ss]、[mm:ss.xx]、[mm:ss.xxx]
+        - 元信息整行：[ti:歌名] [ar:歌手] [al:专辑] [by:xxx] [offset:xxx] 等
+        """
+        if not text:
+            return ""
+        lines = text.splitlines()
+        cleaned = []
+        for raw in lines:
+            line = raw.strip()
+            if not line:
+                continue
+            # 删除行内时间标签
+            line = re.sub(r'\[\d{1,2}:\d{2}(?:[.:]\d{1,3})?\]', '', line).strip()
+            if not line:
+                continue
+            # 跳过 LRC 元信息整行
+            if re.match(
+                r'^\s*\[(?:ti|ar|al|by|offset|re|ve|length|hash|id|au|total|language|t_time|ts)\s*[:：]',
+                line,
+                re.IGNORECASE,
+            ):
+                continue
+            cleaned.append(line)
+        return "\n".join(cleaned)
+
+    def _clean_lyrics(self, text: str) -> str:
+        """清理歌词，只保留纯歌词正文，去除一切非歌词内容。
+
+        移除内容：
+        - 时间标签与 LRC 元信息行（[mm:ss.xx] [ti:..] [ar:..] 等）
+        - 歌名行《..》与歌手名行
+        - 作词 / 作曲 / 编曲 / 演唱等署名行
+        - 版权 / 著作权 / 备注等注释行
+
+        支持的输入格式：
+        - 《歌名>\n歌词正文
+        - 《歌名>歌手名\n歌词正文
+        - 带时间标签的标准 LRC 歌词
+        - 纯歌词正文
+
+        Returns:
+            清理后的纯歌词文本（只含歌词行）
+        """
+        if not text:
+            return ""
+        # 先统一剥离 LRC 时间标签与元信息
+        text = self._strip_lrc_tags(text)
+        lines = text.strip().split('\n')
+
+        # 仅对开头的标题/署名信息（前若干非空行）应用“歌名/歌手”启发式删除，
+        # 避免把正文里的合法短句（如“嘿嘿嘿”“啊啊啊”）或带破折号的歌词误删。
+        header_budget = 2
+
+        cleaned_lines = []
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+
+            in_header = header_budget > 0
+
+            # 跳过歌名行（以《开头）
+            if line.startswith('《'):
+                if in_header:
+                    header_budget -= 1
+                continue
+            # 跳过署名/制作信息行：作词：xx / 词：xx / 曲：xx / 作曲：xx / 演唱：xx 等（需带冒号，避免误删歌词）
+            if re.match(r'^\s*(?:作词|作詞|作曲|编曲|編曲|词|曲|演唱|原唱|翻唱|制作人|制作|混音|录音|监制|出品|发行)\s*[:：]\s*\S+', line):
+                if in_header:
+                    header_budget -= 1
+                continue
+            # 跳过“歌名 - 歌手”形式的作者提示行（如：晴天 - 周杰伦）
+            # 仅在开头信息区生效，且两侧为不含歌词标点的短词，避免误删“我 - 还在原地”等歌词
+            if (
+                in_header
+                and len(line) <= 30
+                and re.match(r'^[^\-\—\–。，！？、：；\s]{1,10}\s*[\-—–]\s*[^\-\—\–。，！？、：；\s]{1,10}$', line)
+            ):
+                header_budget -= 1
+                continue
+            # 跳过明显的版权信息或注释
+            if line.startswith('版权') or line.startswith('著作权') or line.startswith('备注') or line.startswith('注：'):
+                if in_header:
+                    header_budget -= 1
+                continue
+
+            # 走到这里视为正文歌词行，不再属于开头信息区
+            header_budget = 0
+            cleaned_lines.append(line)
+
+        # 如果清理后内容为空，返回去除标签后的原文（可能是格式特殊的歌词）
+        if not cleaned_lines:
+            return text.strip()
+
+        return '\n'.join(cleaned_lines)
+
+    async def _handle_sing_by_search(self, event, song_name):
+        """模式1：搜索歌词演唱"""
+        if not self.config.get("tts_sing_enable", False):
+            await event.send(MessageChain([Plain("请先发送 /唱歌开关 开启唱歌功能")]))
+            return
+
+        if not song_name or len(song_name.strip()) < 1:
+            await event.send(MessageChain([Plain("请提供有效的歌曲名称")]))
+            return
+
+        logger.info(f"[MiMo_TTS] 模式1-搜索歌词: {song_name}")
+        try:
+            search_result = await self._search_lyrics(song_name)
+            if search_result:
+                # 清理在 text_to_voice 内统一执行，避免重复清理造成内容二次削减
+                if search_result and len(search_result.strip()) > 10:
+                    await self._send_sing_audio(event, search_result)
+                else:
+                    await event.send(MessageChain([Plain("获取到的歌词内容无效，请尝试其他歌曲")]))
+            else:
+                await event.send(MessageChain([Plain(f"抱歉，无法获取歌曲《{song_name}》的歌词，请尝试其他歌曲名称")]))
+        except Exception as e:
+            logger.error(f"搜索歌词失败: {e}")
+            await event.send(MessageChain([Plain("搜索歌词时发生错误，请稍后重试")]))
+
+    async def _handle_sing_by_custom(self, event, lyrics):
+        """模式3：自定义歌词演唱"""
+        if not self.config.get("tts_sing_enable", False):
+            await event.send(MessageChain([Plain("请先发送 /唱歌开关 开启唱歌功能")]))
+            return
+
+        if not lyrics or not lyrics.strip():
+            await event.send(MessageChain([Plain("请提供有效的歌词内容")]))
+            return
+
+        logger.info(f"[MiMo_TTS] 模式3-自定义歌词演唱")
+
+        try:
+            # 清理在 text_to_voice 内统一执行；自定义歌词可为单行短句，门槛放宽到非空
+            await self._send_sing_audio(event, lyrics)
+        except Exception as e:
+            logger.error(f"自定义歌词演唱失败: {e}")
+            await event.send(MessageChain([Plain("演唱时发生错误，请稍后重试")]))
+
+    def _build_sing_instruction(self) -> str:
+        """构建 MiMo TTS 官方配套的风格指令（user 消息内容）。
+
+        官方搭配：messages = [user: 风格指令, assistant: "(唱歌)\\n歌词正文"]。
+        取值优先级：
+        1. 用户填写了自定义指令（tts_sing_director）且预设选中 custom 时，使用自定义内容；
+        2. 预设选中某个具体风格预设时，使用该预设指令文本；
+        3. 预设选中 custom 但自定义内容为空，回退 basic 预设。
+        预设值列表见 MIMO_SING_DIRECTOR_PRESETS。
+        """
+        custom = str(self.config.get("tts_sing_director", "") or "").strip()
+        preset = str(self.config.get("tts_sing_director_preset", "basic") or "basic").strip()
+        preset_text = MIMO_SING_DIRECTOR_PRESETS.get(preset, MIMO_SING_DIRECTOR_PRESETS["basic"])
+        # 预设选中 custom：使用自定义指令，自定义为空则回退 basic
+        if preset == "custom":
+            return custom or MIMO_SING_DIRECTOR_PRESETS["basic"]
+        return preset_text
+
+    async def _send_sing_audio(self, event, lyrics):
+        """发送演唱音频（命令路径，强制唱歌模式）。"""
+        if not lyrics or not lyrics.strip():
+            await event.send(MessageChain([Plain("歌词内容为空，无法生成语音")]))
+            return
+
+        try:
+            audio_path = await self.text_to_voice(lyrics, force_sing=True)
+            if audio_path and os.path.exists(audio_path):
+                # 检查文件大小，确保音频有效
+                file_size = os.path.getsize(audio_path)
+                if file_size > 1000:  # 至少1KB
+                    await event.send(MessageChain([Record(file=audio_path, url=audio_path)]))
+                else:
+                    logger.error(f"生成的音频文件过小，可能无效: {file_size} 字节")
+                    await event.send(MessageChain([Plain("语音生成失败，文件大小异常")]))
+            else:
+                await event.send(MessageChain([Plain("语音生成失败，请稍后重试")]))
+        except Exception as e:
+            logger.error(f"发送演唱音频失败: {e}")
+            await event.send(MessageChain([Plain("发送语音时发生错误，请稍后重试")]))
+
+    def _detect_sing_content(self, text: str) -> bool:
+        """检测 AI 生成的文本是否为歌词内容（用于自然语言点歌场景）。
+
+        仅识别明确的唱歌信号，避免把普通多行回复误判为歌词：
+        - 含官方 (唱歌) / （唱歌）标记
+        - 以《歌名》标题开头（AI 唱歌输出格式）
+        命令路径（/唱歌、/跟唱）不依赖本方法，直接 force_sing=True。
+        """
+        if not isinstance(text, str) or not text:
+            return False
+        if not self.config.get("tts_sing_enable", False):
+            return False
+        stripped = text.strip()
+        if '(唱歌)' in stripped or '（唱歌）' in stripped:
+            return True
+        # 首行为《歌名》标题则视为歌词（AI 唱歌输出格式）
+        first_line = stripped.split('\n', 1)[0].strip()
+        if first_line.startswith('《') and '》' in first_line:
+            return True
+        return False
 
     # ===================== LLM 调用（OpenAI 兼容） =====================
 
@@ -1219,14 +1675,50 @@ class CustomChatLLM(Star):
         user_msg: Any,
         is_vision: bool = False,
     ) -> str:
-        messages = self._build_messages(system_prompt, history, user_msg)
+        """调用 LLM 获取回复。
+
+        如果用户输入是部分歌词，会先调用 LLM 补全歌词，再返回完整歌词。
+        """
+        # 检测是否为部分歌词（用于补全）
+        should_complete = False
+        complete_system_prompt = system_prompt
+
+        if self._is_partial_lyrics(user_msg):
+            should_complete = True
+            # 添加歌词补全的系统提示
+            complete_system_prompt = system_prompt + "\n\n【歌词补全指令】\n"
+            complete_system_prompt += "用户发送了部分歌词，请帮 ta 补全后续歌词，输出完整的歌词内容。\n"
+            complete_system_prompt += "直接输出歌词正文，不要添加任何解释或说明。\n"
+
+        messages = self._build_messages(complete_system_prompt, history, user_msg)
         # 模型由 provider 解析决定（默认采用 AstrBot 配置），自定义 API 直连模式在 _call_llm 内取插件配置的模型
         model = None
         data = await self._call_llm(messages, model=model, tools=None, is_vision=is_vision)
         if not data.get("choices"):
             raise RuntimeError("模型未返回有效内容")
         message = data["choices"][0].get("message", {})
-        return (message.get("content") or "").strip()
+        content = (message.get("content") or "").strip()
+
+        # 如果是歌词补全，返回完整歌词；否则返回原内容
+        if should_complete and content:
+            logger.info(f"[MiMo_TTS] 检测到部分歌词，已补全完整歌词")
+            return content
+
+        return content
+
+    def _is_partial_lyrics(self, text: Any) -> bool:
+        """检测文本是否为部分歌词（需要补全）。
+
+        判断条件：
+        1. 字符串包含换行符（多行文本）
+        2. 开启唱歌模式
+        """
+        if not isinstance(text, str) or not text:
+            return False
+        if not self.config.get("tts_sing_enable", False):
+            return False
+        # 多行文本判定为部分歌词
+        return '\n' in text
 
     # ===================== 命令处理 =====================
 
@@ -1253,20 +1745,24 @@ class CustomChatLLM(Star):
             "/删除记忆 序号  删除第 N 条长期记忆\n"
             "/清空长期记忆    删除全部永久记忆\n"
             "/人格列表       查看可用人格\n"
-            "/语音开关       开启/关闭语音播报\n"
-            "/语音模式 值    切换语音模式（text/voice/text_voice）\n"
-            "/设置模型 值    修改对话模型\n"
-            "/设置人格 名字  切换人格\n"
-            "\n"
-            "状态信息：\n"
-            f"总开关：{'✅开启' if chat_enable else '❌关闭'}\n"
-            f"对话模型：{'✅开启' if self.config.get('chat_model_enable', True) else '❌关闭'}\n"
-            f"识图模型：{'✅开启' if self.config.get('vision_model_enable', True) else '❌关闭'}\n"
-            f"长期记忆：{memory_status}\n"
-            f"Edge语音TTS：{tts_status}\n"
-            f"当前人格：{cur_name}\n"
-            "\n"
-        )
+             "/语音开关       开启/关闭语音播报\n"
+             "/语音模式 值    切换语音模式（text/voice/text_voice）\n"
+               "/唱歌开关       开启/关闭唱歌功能\n"
+               "/唱歌 歌名      搜索真实歌词演唱\n"
+               "/跟唱 歌词      自定义歌词演唱\n"
+             "/设置模型 值    修改对话模型\n"
+             "/设置人格 名字  切换人格\n"
+             "\n"
+             "状态信息：\n"
+             f"总开关：{'✅开启' if chat_enable else '❌关闭'}\n"
+             f"对话模型：{'✅开启' if self.config.get('chat_model_enable', True) else '❌关闭'}\n"
+             f"识图模型：{'✅开启' if self.config.get('vision_model_enable', True) else '❌关闭'}\n"
+             f"长期记忆：{memory_status}\n"
+             f"Edge语音TTS：{tts_status}\n"
+               f"唱歌功能：{'✅开启' if self.config.get('tts_sing_enable', False) else '❌关闭'}\n"
+             f"当前人格：{cur_name}\n"
+             "\n"
+         )
         # 动态获取群聊唤醒词前缀
         try:
             at_prefixes = self._get_at_prefixes(event.get_platform_id())
@@ -1276,6 +1772,16 @@ class CustomChatLLM(Star):
         menu += (
             "群聊：使用唤醒词唤醒会话，2分钟内无需重复唤醒\n"
             "私聊：直接发送消息对话\n"
+            "\n"
+            "【唱歌功能使用】\n"
+            "/唱歌开关              开启/关闭唱歌功能\n"
+            "/唱歌 歌名            搜索真实歌词并演唱\n"
+            "/跟唱 歌词内容         自定义歌词并演唱\n"
+            "示例：\n"
+            "   /唱歌 晴天\n"
+            f"演唱风格指令：{self._build_sing_instruction()}\n"
+            "   /跟唱 第一句歌词\n第二句歌词\n第三句歌词\n"
+            "\n"
             "更详细的 API 地址/模型/人格库/音色等配置，请在管理面板的插件控制界面中修改。"
         )
         yield event.plain_result(menu)
@@ -1360,6 +1866,24 @@ class CustomChatLLM(Star):
         self.config.save_config()
         yield event.plain_result(f"✅语音模式切换至：{mode}")
 
+    @filter.command("唱歌开关")
+    async def toggle_sing(self, event: AstrMessageEvent):
+        '''开启/关闭唱歌模式'''
+        self.config["tts_sing_enable"] = not self.config.get("tts_sing_enable", False)
+        self.config.save_config()
+        if self.config["tts_sing_enable"]:
+            instruction = self._build_sing_instruction()
+            yield event.plain_result(f"✅唱歌功能已开启\n当前风格指令：{instruction}\n/唱歌 歌名 - 搜索歌词演唱\n/跟唱 歌词内容 - 自定义歌词演唱")
+        else:
+            yield event.plain_result("❌唱歌功能已关闭")
+
+    # 唱歌命令已整合到 chat_main 中，无需单独的装饰器命令
+    # @filter.command("唱歌")  # 已删除，避免重复处理
+    # @filter.command("唱个")  # 已删除，避免重复处理
+    # @filter.command("创作")  # 已删除，避免重复处理
+    # @filter.command("写作")  # 已删除，避免重复处理
+    # @filter.command("跟唱")  # 已删除，避免重复处理
+
     @filter.command("人格列表")
     async def list_personas_cmd(self, event: AstrMessageEvent):
         '''查看可用人格'''
@@ -1422,11 +1946,11 @@ class CustomChatLLM(Star):
             if not args:
                 await event.send(MessageChain([Plain(f"用法：{cmd} 参数")]))
                 return True
-            gen = method(event, " ".join(args))
+            gen = await method(event, " ".join(args))
         else:
             if args:
                 return False
-            gen = method(event)
+            gen = await method(event)
         try:
             async for result in gen:
                 if isinstance(result, str):
@@ -1442,11 +1966,21 @@ class CustomChatLLM(Star):
     @filter.event_message_type(filter.EventMessageType.ALL, priority=inf)
     async def chat_main(self, event: AstrMessageEvent):
         """监听所有消息，判断是否由本插件响应。"""
+        # 检查插件是否已启用
+        if not getattr(self, '_enabled', True):
+            logger.debug("[MiMo TTS] 插件已禁用，跳过处理")
+            return
+
+        # 检查聊天总开关
+        chat_enable = await self.get_kv_data(f"{PLUGIN_NAME}:chat_switch", True)
+        if not chat_enable:
+            return
+
         messages = event.get_messages()
         has_image = any(isinstance(comp, Image) for comp in messages)
         text = (event.get_message_str() or "").strip()
-        
-        logger.info(f"[MiMo_TTS] 收到消息 - 平台:{event.get_platform_id()}, 私聊:{event.is_private_chat()}, 群:{event.get_group_id()}, 发送者:{event.get_sender_id()}, 文本:'{text}', 组件:{[type(c).__name__ for c in messages]}")
+
+        logger.info(f"[MiMo_TTS] 收到消息 - 平台:{event.get_platform_id()},私聊:{event.is_private_chat()}, 群:{event.get_group_id()}, 发送者:{event.get_sender_id()}, 文本:'{text}', 组件:{[type(c).__name__ for c in messages]}")
 
         # 指令消息检测：本插件或其他插件以 / 开头的指令均不触发 AI 回复
         is_command = text.startswith("/") or any(
@@ -1454,24 +1988,33 @@ class CustomChatLLM(Star):
             for comp in messages
         )
         if is_command:
+            # 检查是否是唱歌命令，如果是则特殊处理
+            if text and self.config.get("tts_sing_enable", False):
+                sing_cmd_info = self._parse_sing_command(text)
+                if sing_cmd_info:
+                    command_type, song_name, custom_lyrics = sing_cmd_info
+                    logger.info(f"[MiMo_TTS] 检测到唱歌命令: {command_type}, 参数: {song_name or custom_lyrics}")
+
+                    # 设置特殊标记，让_do_chat知道这是唱歌请求
+                    event._sing_request = {
+                        'type': command_type,
+                        'song_name': song_name,
+                        'custom_lyrics': custom_lyrics
+                    }
+
+                    await self._do_chat(event)
+                    event.stop_event()
+                    return
+
+            # 非唱歌指令，群聊中直接处理，私聊中不回复
             in_group = event.get_group_id() is not None
             if in_group and not event.is_private_chat():
-                # 群聊中带/指令：检查是否@了机器人，没@则不拦截，放行给其他插件
-                platform_id = event.get_platform_id()
-                at_prefixes = self._get_at_prefixes(platform_id)
-                is_at_bot_now = any(
-                    isinstance(comp, At) and str(getattr(comp, "qq", "")) == str(event.get_self_id())
-                    for comp in messages
-                ) or any(
-                    isinstance(comp, Plain)
-                    and str(getattr(comp, "text", "") or "").strip().startswith(tuple(at_prefixes))
-                    for comp in messages
-                )
-                if not is_at_bot_now:
-                    logger.debug(f"[MiMo_TTS] 群聊中带/指令未@机器人，不拦截，放行给其他插件")
-                    return
-            logger.debug(f"[MiMo_TTS] 检测到指令消息，不回复")
-            return
+                # 群聊中带/指令：无需@机器人，直接处理
+                logger.debug(f"[MiMo_TTS] 群聊中带/指令，直接处理")
+                # 这里可以添加其他指令的处理逻辑
+            else:
+                logger.debug(f"[MiMo_TTS] 检测到指令消息，不回复")
+                return
 
         # 无 / 前缀的插件指令路由：直接发送指令名也能触发（如"聊天菜单"）
         # 群聊中无需@机器人也可触发
@@ -1507,9 +2050,6 @@ class CustomChatLLM(Star):
                 return
             # 群聊中纯@机器人（无文字）仍允许响应
             pass
-        chat_enable = await self.get_kv_data(f"{PLUGIN_NAME}:chat_switch", True)
-        if not chat_enable:
-            return
 
         # 私聊直接响应（过滤掉发给自己的消息，避免自言自语）
         if event.is_private_chat():
@@ -1544,6 +2084,26 @@ class CustomChatLLM(Star):
             )
         ) if at_prefixes else False
         is_at_bot = is_at_bot or is_wake_prefix
+
+        # 唱歌请求：无需@机器人，直接响应
+        if text and self.config.get("tts_sing_enable", False):
+            # 检测唱歌命令并解析参数
+            sing_cmd_info = self._parse_sing_command(text)
+            if sing_cmd_info:
+                command_type, song_name, custom_lyrics = sing_cmd_info
+                logger.info(f"[MiMo_TTS] 检测到唱歌命令: {command_type}, 参数: {song_name or custom_lyrics}")
+
+                # 设置特殊标记，让_do_chat知道这是唱歌请求
+                event._sing_request = {
+                    'type': command_type,
+                    'song_name': song_name,
+                    'custom_lyrics': custom_lyrics
+                }
+
+                await self._do_chat(event)
+                event.stop_event()
+                return
+
         # 群聊图片直答：开启后群里发送图片无需@机器人也会自动识别
         group_image_auto = bool(self.config.get("group_image_reply", False)) and (has_image or reply_has_image)
         # 群聊引用图片特殊处理：如果用户引用了图片且@了机器人，即使没有文字也会回复
@@ -1564,59 +2124,36 @@ class CustomChatLLM(Star):
                 self.active_sessions[key] = now + session_expire
             else:
                 del self.active_sessions[key]
-        # @他人时不回复：开启后消息中@了其他人（非机器人）则一律不回复
-        if bool(self.config.get("ignore_mention_others", False)) and any(
-            isinstance(comp, At)
-            and str(getattr(comp, "qq", "") or "") not in ("", "all")
-            and str(getattr(comp, "qq", "")) != str(self_id)
-            for comp in messages
-        ):
-            return
-        if is_at_bot and self.config.get("enable_noprefix_command", True):
-            # 开关开启时：如果会话已激活则直接响应（视为续聊），否则先唤醒
+
+        # 普通聊天响应：仅当 @机器人 或处于唤醒会话窗口内（2分钟）才响应，避免插话
+        if text and not is_command:
+            # 未@机器人且不在会话窗口内：不响应，避免自动插话
+            if not is_at_bot and not is_session_active:
+                logger.debug("[MiMo_TTS] 群聊消息未@机器人且不在会话窗口内，不响应（避免插话）")
+                return
+
+            # 检查是否@他人（非机器人）
+            if bool(self.config.get("ignore_mention_others", False)) and any(
+                isinstance(comp, At)
+                and str(getattr(comp, "qq", "") or "") not in ("", "all")
+                and str(getattr(comp, "qq", "")) != str(self_id)
+                for comp in messages
+            ):
+                return
+
+            # 普通聊天响应：会话窗口内续聊，无需重复 @
             if is_session_active:
                 logger.debug("[MiMo_TTS] 会话已激活，直接响应消息（续聊模式）")
                 await self._do_chat(event)
                 event.stop_event()
                 return
-            logger.info("[MiMo_TTS] 检测到唤醒词，准备响应 — 用户已唤醒，请自由发挥")
+
+            logger.info("[MiMo_TTS] 检测到@机器人的聊天，准备响应")
             self.active_sessions[key] = now + session_expire
             await self._do_chat(event)
             event.stop_event()  # 阻止 AstrBot 默认对话响应
             logger.info("[MiMo_TTS] 已调用 stop_event 阻止默认对话")
             return
-
-        # 开关关闭时：拦截并屏蔽唤醒前缀（阻止 AstrBot 系统也响应），仅保留 @ 唤醒
-        if not self.config.get("enable_noprefix_command", True) and at_prefixes:
-            is_wake_prefix_match = any(
-                isinstance(comp, Plain)
-                and str(getattr(comp, "text", "") or "").strip().startswith(tuple(at_prefixes))
-                for comp in messages
-            )
-            if is_wake_prefix_match:
-                logger.debug(f"[MiMo_TTS] 唤醒词开关已关闭，拦截唤醒前缀消息，阻止 AstrBot 系统响应")
-                event.stop_event()
-                return
-        if group_image_auto or quoted_image_reply:
-            self.active_sessions[key] = now + session_expire
-            await self._do_chat(event)
-            event.stop_event()
-            return
-        if is_session_active:
-            logger.debug(f"会话激活中，响应消息")
-            await self._do_chat(event)
-            event.stop_event()
-            return
-
-        # 不定时观察群聊：未被@时按插话频率随机上下文感知回复
-        if bool(self.config.get("enable_proactive_chat", False)) and text:
-            freq = int(self.config.get("proactive_chat_frequency", 10) or 10)
-            if freq < 2:
-                freq = 2
-            if random.random() < 1.0 / freq:
-                await self._do_chat(event)
-                event.stop_event()
-                return
 
     def _extract_emoji_meanings(self, text: str) -> str:
         """提取消息中可识别的 Emoji 表情并返回含义描述。"""
@@ -2107,12 +2644,47 @@ class CustomChatLLM(Star):
         uid = self._memory_uid(event)
         text = (event.get_message_str() or "").strip()
         logger.debug(f"_do_chat 开始 - text: '{text}', text长度: {len(text)}")
-        if len(text) > 350:
+
+        # 检查是否为唱歌请求
+        is_sing_request = hasattr(event, '_sing_request') and event._sing_request is not None
+
+        # 唱歌请求直接分流处理，无需先经过普通 LLM 对话流程
+        # search（搜索歌词）/ custom（自定义歌词）不需要 LLM
+        if is_sing_request and event._sing_request:
+            sing_type = event._sing_request.get('type')
+            song_name = event._sing_request.get('song_name')
+            custom_lyrics = event._sing_request.get('custom_lyrics')
+
+            logger.info(f"[MiMo_TTS] 唱歌请求分流处理: {sing_type}, song_name: {song_name}, custom_lyrics: {custom_lyrics}")
+
+            try:
+                if sing_type == 'search':
+                    await self._handle_sing_by_search(event, song_name)
+                elif sing_type == 'custom':
+                    await self._handle_sing_by_custom(event, custom_lyrics)
+                else:
+                    await event.send(MessageChain([Plain("未知的唱歌类型，请重新尝试")]))
+            except Exception as e:
+                logger.error(f"唱歌处理失败: {e}")
+                await event.send(MessageChain([Plain("唱歌处理失败，请稍后重试")]))
+            return
+
+        if len(text) > 350 and not is_sing_request:
             await event.send(MessageChain([Plain("输入文本过长！")]))
             return
 
         # AstrBot "AI 对话总开关"关闭时，对话模型与识图模型都视为关闭，不进行任何回复；
         # 开启"自定义模型"时使用自定义 API，不受 AstrBot 总开关限制
+        if not self._astrbot_ai_enable() and not self.config.get("custom_model_enable", False):
+            return
+
+        # 对话模型独立开关：关闭则不进行任何 AI 回复，且不发送提示
+        if not self.config.get("chat_model_enable", True) and not is_sing_request:
+            logger.debug(f"_do_chat - 对话模型关闭")
+            return
+
+        # AstrBot "AI 对话总开关"关闭时，对话模型与识图模型都视为关闭，不进行任何回复；
+        # 开启“自定义模型”时使用自定义 API，不受 AstrBot 总开关限制
         if not self._astrbot_ai_enable() and not self.config.get("custom_model_enable", False):
             return
 
@@ -2257,6 +2829,18 @@ class CustomChatLLM(Star):
                     "请理解其中传递的情绪，并在回复的语气与内容中自然呼应。\n"
                 )
 
+        # 唱歌模式：提示 AI 当用户要求唱歌时输出歌词；
+        # 官方进阶版搭配支持在歌词中点缀内联音频标签（[吸气] [笑] 等）
+        if self.config.get("tts_sing_enable", False):
+            inline_tags_extra = MIMO_SING_INLINE_TAGS_PROMPT if self.config.get("tts_sing_inline_tags", True) else ""
+            system_prompt += (
+                f"\n【唱歌模式】当用户要求你唱歌或唱一段时，请输出一段完整的歌词（可带歌名《歌名》）。"
+                f"歌词要押韵、节奏感强、朗朗上口，以歌词正文为主，不要添加多余的解说{inline_tags_extra}。"
+                "输出格式示例：\n"
+                "《歌名》\n第一句歌词\n第二句歌词\n第三句歌词\n……\n"
+                "注意：普通对话不需要输出歌词，只有明确被要求唱歌时才输出歌词。\n"
+            )
+
         # 读取历史
         chat_key = self.get_chat_key(event)
         history = await self.get_kv_data(chat_key, [])
@@ -2363,10 +2947,18 @@ class CustomChatLLM(Star):
             return
         logger.debug(f"[MiMo_TTS] 模型回复内容: {content[:50]}...")
 
+        # 处理唱歌请求（已在 _do_chat 开头分流处理，此处保留标记变量供后续判断）
+        if is_sing_request and event._sing_request:
+            return
+
         # 过滤括号内文字用于语音（保留原文字用于发送）
         tts_content = content
         if content:
-            tts_content = re.sub(r'\s+', ' ', tts_content).strip()
+            # 歌词内容保留换行以维持乐句节奏；普通对话压平空白
+            if self._detect_sing_content(content):
+                tts_content = content.strip()
+            else:
+                tts_content = re.sub(r'\s+', ' ', tts_content).strip()
 
         # 回复（文字 + 语音）
         mode = self.config.get("tts_mode", "text_voice")
@@ -2710,8 +3302,9 @@ class CustomChatLLM(Star):
                 "enable_proactive_chat", "proactive_chat_frequency",
                 "enable_noprefix_command",
                 "tts_enable", "tts_mode", "tts_api_base_url", "tts_api_key", "tts_model",
-                "tts_voice", "tts_speed", "tts_emotion", "tts_style", "tts_rhythm", "tts_paralanguage",
-                "max_log", "on_thinking", "session_expire_seconds",
+                  "tts_voice", "tts_speed", "tts_emotion", "tts_style", "tts_rhythm", "tts_paralanguage",
+                    "tts_sing_enable", "tts_sing_director", "tts_sing_director_preset", "tts_sing_inline_tags", "tts_sing_format", "tts_sing_voice",
+                 "max_log", "on_thinking", "session_expire_seconds",
                 "enable_favorability", "favorability_default",
                 "enable_private_companion", "master_user_ids", "avoid_intimate_non_master",
             ]
@@ -3288,6 +3881,37 @@ class CustomChatLLM(Star):
                 return False, f"响应格式异常: {str(data)[:200]}"
         except Exception as e:
             return False, f"连接失败: {e}"
+
+    def _parse_sing_command(self, text: str):
+        """解析唱歌命令，返回 (command_type, song_name, custom_lyrics)"""
+        if not text:
+            return None
+
+        text = text.strip()
+
+        # /唱歌 歌名
+        if text.startswith('/唱歌 '):
+            song_name = text[3:].strip()
+            if song_name:
+                return ('search', song_name, None)
+
+        # /唱个 歌名
+        elif text.startswith('/唱个 '):
+            song_name = text[3:].strip()
+            if song_name:
+                return ('search', song_name, None)
+
+        # /跟唱 歌词内容
+        elif text.startswith('/跟唱 '):
+            custom_lyrics = text[3:].strip()
+            if custom_lyrics:
+                return ('custom', None, custom_lyrics)
+
+        # 直接唱歌命令（无参数）
+        elif text == '/唱歌' or text == '/唱个':
+            return None  # 需要参数
+
+        return None
 
     async def terminate(self) -> None:
         self.active_sessions.clear()

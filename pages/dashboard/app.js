@@ -313,7 +313,12 @@ function collectConfig() {
     tts_style: $("tts_style").value,
     tts_rhythm: $("tts_rhythm").value,
     tts_paralanguage: $("tts_paralanguage").value,
-
+    tts_sing_enable: $("tts_sing_enable").checked,
+    tts_sing_director: $("tts_sing_director").value,
+    tts_sing_director_preset: $("tts_sing_director_preset").value,
+    tts_sing_inline_tags: $("tts_sing_inline_tags").checked,
+    tts_sing_format: $("tts_sing_format").value,
+    tts_sing_voice: $("tts_sing_voice").value,
     memory_recall_count: parseInt($("memory_recall_count").value, 10) || 3,
     session_expire_seconds: parseInt($("session_expire_seconds").value, 10) || 120,
     max_log: parseInt($("max_log").value, 10) || 14,
@@ -336,6 +341,25 @@ function fillVoices(selected) {
   });
   if (selected) sel.value = selected;
   else if (sel.options.length) sel.value = sel.options[0].value;
+}
+
+function fillSingVoices(selected) {
+  const sel = $("tts_sing_voice");
+  if (!sel) return;
+  sel.innerHTML = "";
+  const follow = document.createElement("option");
+  follow.value = "";
+  follow.textContent = "跟随普通语音音色";
+  sel.appendChild(follow);
+  const list = ttsVoices.length ? ttsVoices : FALLBACK_TTS_VOICES;
+  list.forEach((v) => {
+    const opt = document.createElement("option");
+    opt.value = v.value;
+    opt.textContent = v.label + (v.desc ? " · " + v.desc : "");
+    sel.appendChild(opt);
+  });
+  if (selected) sel.value = selected;
+  else sel.value = "";
 }
 
 async function saveConfigKeys(keys, btn) {
@@ -419,12 +443,25 @@ function applyConfig(config) {
    $("tts_style").value = config.tts_style || "";
    $("tts_rhythm").value = config.tts_rhythm || "";
    $("tts_paralanguage").value = config.tts_paralanguage || "";
+    setSwitch("tts_sing_enable", config.tts_sing_enable);
+    $("tts_sing_director").value = config.tts_sing_director || "";
+    $("tts_sing_director_preset").value = config.tts_sing_director_preset || "basic";
+    syncSingDirectorVisibility();
+    setSwitch("tts_sing_inline_tags", config.tts_sing_inline_tags !== false);
+    $("tts_sing_format").value = config.tts_sing_format || "mp3";
+    fillSingVoices(config.tts_sing_voice);
    $("memory_recall_count").value = config.memory_recall_count || 3;
   $("session_expire_seconds").value = config.session_expire_seconds || 120;
   $("max_log").value = config.max_log || 14;
   $("on_thinking").value = config.on_thinking ? "true" : "false";
   $("proactive_chat_frequency").value = config.proactive_chat_frequency || 10;
   $("favorability_default").value = config.favorability_default || 50;
+}
+
+function syncSingDirectorVisibility() {
+  const preset = $("tts_sing_director_preset").value;
+  const field = $("tts_sing_director_field");
+  if (field) field.style.display = preset === "custom" ? "" : "none";
 }
 
 function updateCustomModelFields() {
@@ -434,6 +471,48 @@ function updateCustomModelFields() {
   });
   const btn = $("btnTestAstrbot");
   if (btn) btn.disabled = enabled;
+}
+
+async function testModelStatus(target, btn) {
+  const result = $("modelTestResult");
+  if (!result) return;
+  btn.disabled = true;
+  btn.textContent = target === "custom" ? "自定义模型测试中…" : "AstrBot 模型测试中…";
+  result.style.display = "none";
+  result.innerHTML = "";
+  try {
+    const res = await bridge.apiPost("model_status", { target });
+    const items = Array.isArray(res && res.items) ? res.items : [];
+    result.style.display = "block";
+    if (items.length === 0) {
+      result.innerHTML = `<div class="model-test-item"><span class="model-test-name">-</span><span class="model-test-msg">无可用模型</span></div>`;
+      showToast("模型没有打开", true);
+    } else {
+      result.innerHTML = items
+        .map((it) => {
+          const ok = it.connected;
+          const cls = ok ? "ok" : it.enabled ? "fail" : "off";
+          return (
+            `<div class="model-test-item ${cls}">` +
+            `<span class="model-test-name">${escapeHtml(it.name)}</span>` +
+            (it.model ? `<span class="model-test-model">${escapeHtml(it.model)}</span>` : "") +
+            `<span class="model-test-msg">${escapeHtml(it.message || "")}</span>` +
+            `</div>`
+          );
+        })
+        .join("");
+      const anyOk = items.some((it) => it.connected);
+      if (anyOk) showToast("模型连接正常", false, true);
+      else showToast("模型连接失败，请检查配置", true);
+    }
+  } catch (e) {
+    result.style.display = "block";
+    result.innerHTML = `<div class="model-test-item fail"><span class="model-test-name">-</span><span class="model-test-msg">${escapeHtml(e.message || "请求失败")}</span></div>`;
+    showToast("测试失败：" + (e.message || ""), true);
+  } finally {
+    btn.disabled = target === "astrbot" && $("custom_model_enable").checked;
+    btn.textContent = target === "custom" ? "自定义模型测试" : "AstrBot 模型测试";
+  }
 }
 
 async function loadStatus() {
@@ -660,6 +739,7 @@ async function init() {
   try {
     const config = await bridge.apiGet("config");
     applyConfig(config);
+    fillSingVoices(config.tts_sing_voice);
   } catch (e) {
     showToast("加载配置失败：" + e.message, true);
   }
@@ -675,6 +755,27 @@ $("btnTestAstrbot").addEventListener("click", async () => {
 });
 
 $("custom_model_enable").addEventListener("change", updateCustomModelFields);
+$("tts_sing_director_preset").addEventListener("change", syncSingDirectorVisibility);
+
+// 唱歌自定义指令：点击示例模版填入对应指令文本
+document.querySelectorAll("[data-sing-template]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const key = btn.dataset.singTemplate;
+    const templates = {
+      basic: "用温柔、略带气声的方式演唱，副歌部分加强重音，尾音放慢并轻微拉长",
+      advanced: "角色：清澈甜美的年轻女声。场景：深夜安静的录音棚。指导：主歌用气声轻轻诉说，副歌胸腔共鸣打开，情绪逐步推高，每句尾音自然收弱。",
+      shuqing: "角色：温暖醇厚、略带磁性的嗓音。场景：黄昏的街角，路灯刚亮起。指导：节奏偏慢，每个字都咬实，副歌尾音轻微拉长，整体情绪克制而深情，不刻意煽情。",
+      gufeng: "角色：清冷雅致的古韵嗓音，字正腔圆。场景：古曲伴奏，竹林庭院，月色清朗。指导：行腔婉转，咬字归韵，气口留白，旋律在「字」与「腔」之间自然过渡，副歌处共鸣渐开。",
+      yaogun: "角色：充满爆发力的摇滚嗓，略带沙哑。场景：现场摇滚演唱会，鼓点密集。指导：主歌紧凑有力，副歌嗓音撕开、咬字加重，节奏快而冲，结尾收得干净利落。",
+      minyao: "角色：朴素自然的嗓音，带一点颗粒感。场景：木吉他弹唱，午后阳光。指导：节奏舒缓，像说话一样娓娓道来，副歌稍抬音量，尾音自然轻收，不做作。",
+      ertong: "角色：活泼俏皮的童声，干净透亮。场景：儿童合唱团，欢快氛围。指导：节奏明快，咬字清楚圆润，每个字带一点弹性，整体轻快跳跃，不压低嗓音。",
+      jiashi: "角色：慵懒松弛的爵士嗓音，气息绵长。场景：深夜爵士酒吧，霓虹灯影。指导：节奏 rub 化，重音位置微微错拍，尾音带一点 swing 的弹性，整体松弛不紧。",
+      shuoshuo: "角色：节奏感强的说唱嗓音，咬字干脆。场景：嘻哈节拍，808 鼓组。指导：节奏卡拍，咬字短促有力，韵脚重音，整体律动感强，不拖泥带水。",
+    };
+    const text = templates[key];
+    if (text) $("tts_sing_director").value = text;
+  });
+});
 
 // 语速和音调滑动条实时显示数值
 $("tts_speed").addEventListener("input", (e) => {
@@ -699,9 +800,15 @@ const VOICE_KEYS = [
   "tts_speed",
   "tts_emotion",
   "tts_style",
-  "tts_rhythm",
-  "tts_paralanguage",
-];
+   "tts_rhythm",
+   "tts_paralanguage",
+     "tts_sing_enable",
+     "tts_sing_director",
+     "tts_sing_director_preset",
+     "tts_sing_inline_tags",
+     "tts_sing_format",
+     "tts_sing_voice",
+ ];
 
 const MEMORY_KEYS = [
   "enable_long_memory",

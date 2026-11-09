@@ -65,7 +65,7 @@ docker compose up -d --build
 
 说明：
 
-- `docker-compose.yml` 构建一个基于官方镜像、预装插件依赖并补齐 `ffmpeg` 的镜像（`astrbot-mimo-tts:latest`），并挂载宿主机 AstrBot 数据目录（插件目录 `data/plugins/<本插件>/` 的上一级两级，即 `<AstrBot>/data`）到容器 `/AstrBot/data`，插件本体与长记忆 `data/long_memory/` 自动持久化。
+- `docker-compose.yml` 构建一个基于官方镜像、预装插件依赖并补齐 `ffmpeg` 的镜像（`astrbot-mimo-tts:latest`），并挂载宿主机 AstrBot 数据目录（插件目录 `data/plugins/<本插件>/` 的上一级两级，即 `<AstrBot>/data`）到容器 `/AstrBot/data`，插件本体与长记忆（`<AstrBot 根>/data/plugin_data/astrbot_plugin_mimotts/long_memory/`）自动持久化。
 - 容器健康检查使用容器内 Python 实现（不依赖 `curl`），官方镜像未内置 curl 也能正常检查存活。
 
 ## 🎯 快速使用
@@ -141,6 +141,11 @@ docker compose up -d --build
 | `enable_emoji_analysis` | 消息 Emoji 表情识别开关 |
 | `enable_facial_expression` | 图片人脸表情识别开关 |
 | `tts_enable` / `tts_mode` / `tts_voice` / `tts_speed` | MiMo TTS 开关、模式（text=仅文字 / voice=仅语音 / text_voice=文字 + 语音）、音色（9 种精选音色）、语速 |
+| `tts_sing_enable` | 唱歌模式开关（官方配套搭配：风格指令放 user 消息，assistant 消息以 `(唱歌)` 开头接歌词） |
+| `tts_sing_director` / `tts_sing_director_preset` | 唱歌风格指令预设：basic/advanced/shuqing/gufeng/yaogun/minyao/ertong/jiashi/shuoshuo/custom；custom 时启用 `tts_sing_director` 自定义指令，留空回退 basic |
+| `tts_sing_voice` | 唱歌独立音色：唱歌模式专用音色，留空跟随普通语音音色（`tts_voice`），说话与唱歌互不影响 |
+| `tts_sing_inline_tags` | 唱歌内联音频标签：开启后歌词点缀 `[吸气]`、`[笑]` 等官方内联标签 |
+| `tts_sing_format` | 唱歌音频输出格式（mp3 / wav） |
 | `max_log` | 上下文最大保留轮数 |
 | `on_thinking` | 开启深度思考指令 |
 | `session_expire_seconds` | 群聊唤醒会话时长（秒），默认 120（2 分钟） |
@@ -202,6 +207,36 @@ MiMo TTS 支持丰富的情绪、节奏和副语言控制，让语音表达更�
 
 情绪控制通过 MiMo TTS 的自然语言指令实现，会根据选择的参数生成相应的语音风格。
 
+## 🎤 唱歌模式（官方配套搭配）
+
+唱歌功能采用 MiMo TTS 官方配套搭配：**风格指令放在 user 消息，歌词放在 assistant 消息（以 `(唱歌)` 开头）**。
+
+调用结构（官方示例）：
+
+```json
+{
+  "model": "mimo-v2.5-tts",
+  "messages": [
+    {"role": "user", "content": "<风格指令：基本版简洁指令 / 进阶版导演式描述>"},
+    {"role": "assistant", "content": "(唱歌)\n歌词正文（可含 [吸气] [笑] 等内联标签）"}
+  ],
+  "audio": {"voice": "冰糖", "format": "mp3"}
+}
+```
+
+控制界面「语音」模块的唱歌调节项：
+
+- **唱歌模式开关**（`tts_sing_enable`）
+- **风格指令预设**（`tts_sing_director_preset`）：`basic` 基本版（官方简洁指令）/ `advanced` 进阶版（官方角色+场景+指导）/ `shuqing` 抒情 / `gufeng` 古风 / `yaogun` 摇滚 / `minyao` 民谣 / `ertong` 儿歌 / `jiashi` 爵士 / `shuoshuo` 说唱 / `custom` 自定义
+- **自定义风格指令**（`tts_sing_director`）：预设选中「自定义」时启用，可写任意导演式描述；留空回退 basic 预设
+- **内联音频标签**（`tts_sing_inline_tags`）：开启后 AI 生成歌词时点缀 `[吸气]`、`[笑]`、`[哭]`、`[叹气]`、`[停顿]` 等官方内联标签
+- **音频格式**（`tts_sing_format`）：`mp3` / `wav`
+- **唱歌独立音色**（`tts_sing_voice`）：唱歌模式专用音色，留空则跟随普通语音音色；说话与唱歌各自独立
+
+控制界面「语音」模块的唱歌卡片内嵌一段「唱歌功能使用方法」说明块，分 5 步引导：开启开关 → 选风格 → 选音色 → 保存配置 → 聊天中使用（含 `/唱歌`、`/跟唱`、自然对话三种用法示例）。
+
+命令入口：`/唱歌开关` 开闭；`/唱歌 歌名` 搜索真实歌词演唱；`/跟唱 歌词` 自定义歌词演唱。
+
 ## 🧠 人格库
 
 人格库内置 5 个主流人格，可在控制界面自由管理：
@@ -218,7 +253,7 @@ MiMo TTS 支持丰富的情绪、节奏和副语言控制，让语音表达更�
 
 ## 💾 长期记忆
 
-- 长期记忆以 **JSON 文件**形式存储于插件目录 `data/long_memory/`。
+- 长期记忆以 **JSON 文件**形式存储于 AstrBot 标准插件数据目录 `data/plugin_data/astrbot_plugin_mimotts/long_memory/`（即 `<AstrBot 根>/data/plugin_data/astrbot_plugin_mimotts/long_memory/`，随 `data/` 挂载持久化，更新/重装插件不丢失）。
 - **私聊记忆按用户分文件**：`user_<用户ID>.json`，仅该用户可见。
 - **群聊记忆按群分文件**：`group_<群ID>.json`，记录该群内的对话记忆，不归属任何单个成员。
 - 控制界面的「长期记忆管理」按「私聊记忆 / 群聊记忆」分组展示，支持：
@@ -230,7 +265,7 @@ MiMo TTS 支持丰富的情绪、节奏和副语言控制，让语音表达更�
 
 ## ❤️ 好感度与私人陪护
 
-- 好感度以 **JSON 文件**形式存储于插件目录 `data/favorability.json`，结构为 `{"user": {用户ID: 值}, "group": {群ID: 值}}`。
+- 好感度以 **JSON 文件**形式存储于 AstrBot 标准插件数据目录 `data/plugin_data/astrbot_plugin_mimotts/favorability.json`，结构为 `{"user": {用户ID: 值}, "group": {群ID: 值}}`。
 - **好感度面板开关**（`enable_favorability`）开启后，每次成功互动好感度 +1；AI 会在回复语气中自然体现当前好感度：低好感度保持礼貌克制、保持距离；中等自然友好；高好感度亲近热情。
 - **起始好感度**（`favorability_default`）决定新用户/新群的初始值，范围 0-100，默认 50。
 - 好感度面板提供管理功能：按「私聊 / 群聊」选择类型，填入用户/群 ID 可**查询**、**设置**指定好感度值，列表内每条记录可单独**调整 / 删除**，支持**刷新列表**与**清空全部**。
@@ -245,18 +280,22 @@ MiMo TTS 支持丰富的情绪、节奏和副语言控制，让语音表达更�
 ## 📁 目录结构
 
 ```
-  astrbot_plugin_mimotts/
+astrbot_plugin_mimotts/
 ├─ main.py            # 插件主逻辑
 ├─ metadata.yaml      # 插件元数据（显示名：Edge_TTS）
 ├─ _conf_schema.json  # 配置定义（全部 invisible，管理面板不显示）
 ├─ requirements.txt   # 依赖
-├─ pages/
-│  └─ dashboard/      # 控制界面
-│     ├─ index.html
-│     └─ app.js
-└─ data/
-   ├─ long_memory/    # 长期记忆文件（user_*.json / group_*.json，运行时自动生成）
-   └─ <插件>_config.json   # 插件配置（持久化到 AstrBot 配置目录 data/config/）
+└─ pages/
+   └─ dashboard/      # 控制界面
+      ├─ index.html
+      └─ app.js
+
+# 运行时数据（位于 AstrBot 根目录，随 data/ 挂载持久化，插件目录内无 data/）
+<AstrBot 根>/data/
+├─ config/astrbot_plugin_mimotts_config.json  # 插件配置
+└─ plugin_data/astrbot_plugin_mimotts/
+   ├─ long_memory/     # 长期记忆文件（user_*.json / group_*.json，运行时自动生成）
+   └─ favorability.json# 好感度数据
 ```
 
-> 插件配置统一持久化到 AstrBot 的 `data/config/astrbot_plugin_mimotts_config.json`（或经典配置路径），由控制界面读写；人格库保存在插件 KV 存储中。
+> 插件配置统一持久化到 AstrBot 的 `data/config/astrbot_plugin_mimotts_config.json`（或经典配置路径），由控制界面读写；人格库保存在插件 KV 存储中；长期记忆与好感度文件保存在 AstrBot 标准插件数据目录 `data/plugin_data/astrbot_plugin_mimotts/` 下，更新或重装插件不会丢失数据。

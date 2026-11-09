@@ -399,6 +399,46 @@
         text-align: center;
         padding: 20px 0;
       }
+      .model-test-result {
+        margin-top: 10px;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .model-test-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        font-size: 13px;
+        border-bottom: 1px solid var(--border);
+      }
+      .model-test-item:last-child {
+        border-bottom: none;
+      }
+      .model-test-item.ok {
+        background: rgba(16, 185, 129, 0.08);
+        color: var(--green);
+      }
+      .model-test-item.fail {
+        background: rgba(239, 68, 68, 0.08);
+        color: var(--red);
+      }
+      .model-test-item.off {
+        background: var(--bg);
+        color: var(--muted);
+      }
+      .model-test-name {
+        font-weight: 600;
+        min-width: 60px;
+      }
+      .model-test-model {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .model-test-msg {
+        flex: 1;
+        text-align: right;
+      }
       .current-persona {
         display: flex;
         align-items: center;
@@ -573,6 +613,7 @@
           <button class="btn" id="btnTestCustom">自定义模型测试</button>
           <button class="btn" id="btnTestAstrbot">AstrBot 模型测试</button>
         </div>
+        <div id="modelTestResult" class="model-test-result" style="display:none"></div>
       </div>
 
       <div class="card view" data-view="persona">
@@ -740,6 +781,92 @@
                   <option value="气声">气声</option>
                 </select>
                 <span class="hint">选择副语言效果，留空使用默认效果</span>
+              </div>
+
+              <div class="switch-row" style="grid-column: 1 / -1">
+                <div class="info">
+                  唱歌模式
+                  <span class="hint">开启后语音以唱歌形式合成，采用官方配套搭配：风格指令放 user 消息，assistant 消息以 (唱歌) 开头接歌词；风格指令支持基本版/进阶版官方预设或自定义导演式描述</span>
+                </div>
+                <label class="switch"><input type="checkbox" id="tts_sing_enable" /><span class="slider"></span></label>
+              </div>
+              <div style="grid-column: 1 / -1; background: var(--bg2); border-radius: 10px; padding: 14px 16px; border: 1px solid var(--border); font-size: 13px; line-height: 1.8; color: var(--muted)">
+                <strong style="color: var(--text); display: block; margin-bottom: 8px">唱歌功能使用方法</strong>
+                <div style="margin-bottom: 6px">
+                  <strong style="color: var(--text)">1. 开启开关</strong>
+                  勾选上方「唱歌模式」，之后 AI 会自动以演唱形式合成语音。
+                </div>
+                <div style="margin-bottom: 6px">
+                  <strong style="color: var(--text)">2. 选择演唱风格</strong>
+                  在「唱歌风格指令预设」中选择一个风格（基本版 / 进阶版 / 古风 / 摇滚 / 抒情 / 民谣 / 儿歌 / 爵士 / 说唱），或选「自定义」后在下方填写导演式描述。
+                </div>
+                <div style="margin-bottom: 6px">
+                  <strong style="color: var(--text)">3. 选音色</strong>
+                  在「唱歌独立音色」中挑一个适合演唱的音色，选「跟随普通语音音色」则和说话用同一个。
+                </div>
+                <div style="margin-bottom: 6px">
+                  <strong style="color: var(--text)">4. 保存配置</strong>
+                  点底部「保存语音配置」按钮保存所有唱歌相关设置。
+                </div>
+                <div style="margin-bottom: 4px">
+                  <strong style="color: var(--text)">5. 在聊天中使用</strong>
+                </div>
+                <div style="background: var(--bg); border-radius: 6px; padding: 8px 12px; margin-top: 4px; font-family: monospace; font-size: 12px; line-height: 1.9">
+                  <div><strong>搜索演唱</strong>：直接发「/唱歌 晴天」，插件会联网搜索真实歌词并演唱</div>
+                  <div><strong>自定义演唱</strong>：发「/跟唱 第一句歌词 第二句歌词」，唱你给的歌词</div>
+                  <div><strong>自然对话</strong>：直接说「唱一首稻香」「来一段古风歌」，AI 会输出歌词并演唱</div>
+                </div>
+              </div>
+              <div class="field">
+                <label>唱歌风格指令预设</label>
+                <select id="tts_sing_director_preset">
+                  <option value="basic">基本版（官方简洁指令）</option>
+                  <option value="advanced">进阶版（官方角色+场景+指导）</option>
+                  <option value="shuqing">抒情慢歌</option>
+                  <option value="gufeng">古风</option>
+                  <option value="yaogun">摇滚</option>
+                  <option value="minyao">民谣</option>
+                  <option value="ertong">儿歌</option>
+                  <option value="jiashi">爵士</option>
+                  <option value="shuoshuo">说唱</option>
+                  <option value="custom">自定义（导演模式）</option>
+                </select>
+                <span class="hint">官方配套：每种预设对应一段内置导演式风格指令；选「自定义」可在下方填写</span>
+              </div>
+              <div class="field" style="grid-column: 1 / -1; display: none" id="tts_sing_director_field">
+                <label>自定义风格指令（导演模式）</label>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px">
+                  <span style="font-size: 12px; color: var(--muted)">示例模版：</span>
+                  <button class="btn small" data-sing-template="basic">基本版</button>
+                  <button class="btn small" data-sing-template="advanced">进阶版</button>
+                  <button class="btn small" data-sing-template="shuqing">抒情</button>
+                  <button class="btn small" data-sing-template="gufeng">古风</button>
+                  <button class="btn small" data-sing-template="yaogun">摇滚</button>
+                  <button class="btn small" data-sing-template="minyao">民谣</button>
+                  <button class="btn small" data-sing-template="ertong">儿歌</button>
+                  <button class="btn small" data-sing-template="jiashi">爵士</button>
+                  <button class="btn small" data-sing-template="shuoshuo">说唱</button>
+                </div>
+                <textarea id="tts_sing_director" rows="3"></textarea>
+                <span class="hint">点击示例模版可填入对应指令文本，填入后可自由修改；写导演式描述，如「角色：清澈甜美的年轻女声。场景：深夜安静的录音棚。指导：主歌气声诉说，副歌共鸣打开，尾音收弱」</span>
+              </div>
+              <div class="field">
+                <label>唱歌独立音色</label>
+                <select id="tts_sing_voice" style="min-width:220px"></select>
+                <span class="hint">唱歌模式专用音色；选「跟随普通语音音色」则使用上方「音色」所选值，说话与唱歌各自独立</span>
+              </div>
+              <div class="field">
+                <label>唱歌内联标签</label>
+                <label class="switch" style="margin-top: 8px"><input type="checkbox" id="tts_sing_inline_tags" checked /><span class="slider"></span></label>
+                <span class="hint">官方配套：开启后 AI 生成歌词时点缀 [吸气]、[笑] 等内联音频标签增强表现力</span>
+              </div>
+              <div class="field">
+                <label>唱歌音频格式</label>
+                <select id="tts_sing_format">
+                  <option value="mp3">mp3</option>
+                  <option value="wav">wav</option>
+                </select>
+                <span class="hint">唱歌模式音频输出格式，默认 mp3</span>
               </div>
           </div>
           <div class="actions" style="margin-top: 16px">
